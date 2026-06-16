@@ -1,0 +1,8 @@
+=== SAMPLE INVOICE (Demo Data) ===
+Invoice Number: INV-DEMO-2026-003
+Vendor: Initech Solutions
+Date: 2026-03-10
+Amount: $999.99
+Description: Software license renewal - annual
+Status: Pending Review
+====================================

@@ -1,0 +1,11 @@
+{
+  "export_type": "json",
+  "generated_at": "2026-06-01T12:00:00Z",
+  "records": [
+    {"timestamp": "2026-06-01T11:55:00Z", "action": "demo.seed", "actor": "demo", "detail": "Seeded demo data"},
+    {"timestamp": "2026-06-01T11:56:00Z", "action": "demo.invoice_upload", "actor": "demo", "detail": "Uploaded sample invoice #1"},
+    {"timestamp": "2026-06-01T11:57:00Z", "action": "demo.invoice_approve", "actor": "demo", "detail": "Approved sample invoice #2"},
+    {"timestamp": "2026-06-01T11:58:00Z", "action": "demo.export", "actor": "demo", "detail": "Exported to Excel"},
+    {"timestamp": "2026-06-01T11:59:00Z", "action": "demo.backup", "actor": "demo", "detail": "Ran local backup"}
+  ]
+}

@@ -1,0 +1,315 @@
+# OfficePilot AI — Beta Release Pipeline
+#
+# Builds the Windows installer (MSI + NSIS), creates a Tauri-compatible
+# updater manifest, and publishes everything to GitHub Releases.
+# Triggers on pushes to the `beta` branch.
+#
+# Required Secrets:
+#   TAURI_SIGNING_PRIVATE_KEY         — base64-encoded updater signing private key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — password for the signing key
+#
+# Optional Secrets:
+#   OFFICEPILOT_CERT_BASE64           — base64-encoded code signing certificate
+#   OFFICEPILOT_CERT_PASSWORD         — certificate password
+#
+# Workflow dispatch supports "patch", "minor", "major" version bumps
+# (requires manual version update in frontend/package.json).
+
+name: Beta Release
+
+on:
+  push:
+    branches: [ beta ]
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options: [ patch, minor, major ]
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  RUST_TOOLCHAIN: stable
+  # IMPORTANT: Replace csmimrankhan/officepilot with your actual GitHub
+  # repository path before running the workflow for the first time.
+  TAURI_UPDATER_ENDPOINT: 'https://raw.githubusercontent.com/csmimrankhan/officepilot/main/releases/latest-beta.json'
+
+jobs:
+  test-and-build:
+    name: Test & Build (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+
+    steps:
+      # ---------------------------------------------------------------
+      # 1. Checkout
+      # ---------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 2. Setup toolchain
+      # ---------------------------------------------------------------
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Setup Rust ${{ env.RUST_TOOLCHAIN }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/tauri/src-tauri
+
+      # ---------------------------------------------------------------
+      # 3. Install system dependencies
+      # ---------------------------------------------------------------
+      - name: Install NSIS (Nullsoft Scriptable Install System)
+        run: choco install nsis --no-progress --limit-output -y
+
+      - name: Install WiX Toolset v3 (for MSI)
+        run: |
+          # Download WiX Toolset binaries directly (more reliable than choco)
+          $url = "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip"
+          $zip = "$env:TEMP\wix.zip"
+          $extract = "C:\wix"
+          Write-Host "Downloading WiX Toolset v3.14..."
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          if (-not (Test-Path $extract)) { New-Item -ItemType Directory -Path $extract -Force }
+          Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
+          echo "$extract" | Out-File -Append $env:GITHUB_PATH
+          Write-Host "WiX Toolset installed to $extract"
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller>=6.0
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # ---------------------------------------------------------------
+      # 4. Run backend tests
+      # ---------------------------------------------------------------
+      - name: Run backend tests
+        run: python -m pytest -q --tb=short
+        working-directory: backend
+        continue-on-error: false
+
+      # ---------------------------------------------------------------
+      # 5. Run frontend tests
+      # ---------------------------------------------------------------
+      - name: Run frontend tests
+        run: npm test -- --run
+        working-directory: frontend
+
+      # ---------------------------------------------------------------
+      # 6. Build frontend
+      # ---------------------------------------------------------------
+      - name: Build frontend (Vite)
+        run: npm run build
+        working-directory: frontend
+
+      # ---------------------------------------------------------------
+      # 7. Build sidecar binary
+      # ---------------------------------------------------------------
+      - name: Build sidecar (PyInstaller)
+        run: |
+          $SpecFile = Join-Path ${{ github.workspace }} "scripts\officepilot_sidecar.spec"
+          Push-Location "${{ github.workspace }}\backend"
+          try {
+            python -m PyInstaller --noconfirm --clean "$SpecFile"
+            if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
+          } finally { Pop-Location }
+          # Verify output
+          $out = Join-Path "${{ github.workspace }}\backend\dist" "officepilot-agent.exe"
+          if (-not (Test-Path $out)) { throw "Sidecar not produced: $out" }
+          Write-Host "Sidecar built: $(Get-Item $out | Select-Object Length,LastWriteTime)"
+
+      - name: Rename & copy sidecar to Tauri binaries dir
+        run: |
+          $TargetTriple = "x86_64-pc-windows-msvc"
+          $PyDist = Join-Path "${{ github.workspace }}" "backend\dist"
+          $TauriBin = Join-Path "${{ github.workspace }}" "desktop\tauri\src-tauri\binaries"
+          $Named = Join-Path $PyDist "officepilot-agent-$TargetTriple.exe"
+          Copy-Item -LiteralPath (Join-Path $PyDist "officepilot-agent.exe") -Destination $Named -Force
+          if (-not (Test-Path $TauriBin)) { New-Item -ItemType Directory -Path $TauriBin -Force }
+          Copy-Item -LiteralPath $Named -Destination (Join-Path $TauriBin "officepilot-agent-$TargetTriple.exe") -Force
+          Write-Host "Sidecar copied to Tauri binaries dir"
+
+      # ---------------------------------------------------------------
+      # 8. Build the Tauri app (MSI + NSIS)
+      # ---------------------------------------------------------------
+      - name: Build Tauri app
+        run: cargo tauri build --bundles msi,nsis
+        working-directory: desktop/tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          OFFICEPILOT_CERT_BASE64: ${{ secrets.OFFICEPILOT_CERT_BASE64 }}
+          OFFICEPILOT_CERT_PASSWORD: ${{ secrets.OFFICEPILOT_CERT_PASSWORD }}
+
+      # ---------------------------------------------------------------
+      # 9. Determine version dynamically
+      # ---------------------------------------------------------------
+      - name: Determine version and release tag
+        id: version
+        shell: pwsh
+        run: |
+          $PkgFile = Join-Path "${{ github.workspace }}" "frontend\package.json"
+          $Version = "0.36.1"
+          if (Test-Path $PkgFile) {
+            $Pkg = Get-Content $PkgFile -Raw | ConvertFrom-Json
+            $Version = $Pkg.version
+          }
+          $ReleaseTag = "v$Version-beta"
+          Write-Host "version=$Version" | Out-File -Append $env:GITHUB_OUTPUT
+          Write-Host "release_tag=$ReleaseTag" | Out-File -Append $env:GITHUB_OUTPUT
+          Write-Host "Version: $Version, Tag: $ReleaseTag"
+
+      # ---------------------------------------------------------------
+      # 10. Locate build artifacts
+      # ---------------------------------------------------------------
+      - name: Locate artifacts
+        id: artifacts
+        shell: pwsh
+        run: |
+          $BundleDir = Join-Path "${{ github.workspace }}" "desktop\tauri\src-tauri\target\release\bundle"
+          $MsiFiles = Get-ChildItem -Path $BundleDir -Recurse -Filter "*.msi"
+          $NsisFiles = Get-ChildItem -Path $BundleDir -Recurse -Filter "*.exe" | Where-Object { $_.Name -match "setup" }
+          $SigFiles = Get-ChildItem -Path $BundleDir -Recurse -Filter "*.sig"
+          $SigFile = $SigFiles | Select-Object -First 1
+
+          if (-not $MsiFiles) { throw "No MSI found in $BundleDir" }
+          if (-not $NsisFiles) { throw "No NSIS found in $BundleDir" }
+
+          Write-Host "msi=$($MsiFiles[0].FullName)" | Out-File -Append $env:GITHUB_OUTPUT
+          Write-Host "nsis=$($NsisFiles[0].FullName)" | Out-File -Append $env:GITHUB_OUTPUT
+          if ($SigFile) {
+            Write-Host "sig=$($SigFile.FullName)" | Out-File -Append $env:GITHUB_OUTPUT
+          }
+          Write-Host "Found MSI: $($MsiFiles[0].Name)"
+          Write-Host "Found NSIS: $($NsisFiles[0].Name)"
+          if ($SigFile) { Write-Host "Found SIG: $($SigFile.Name)" }
+
+      # ---------------------------------------------------------------
+      # 11. Generate updater manifest
+      # ---------------------------------------------------------------
+      - name: Generate Tauri updater manifest
+        id: manifest
+        shell: pwsh
+        run: |
+          $Version = "${{ steps.version.outputs.version }}"
+          $PubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $Notes = "Beta release $Version — see GitHub releases for changelog."
+          $MsiFile = Get-ChildItem -Path "${{ github.workspace }}\desktop\tauri\src-tauri\target\release\bundle" -Recurse -Filter "*.msi" | Select-Object -First 1
+          $MsiName = $MsiFile.Name
+
+          $ReleaseTag = "${{ steps.version.outputs.release_tag }}"
+          $BaseUrl = "https://github.com/${{ github.repository }}/releases/download/$ReleaseTag"
+
+          $SigFile = Get-ChildItem -Path "${{ github.workspace }}\desktop\tauri\src-tauri\target\release\bundle" -Recurse -Filter "*.sig" | Select-Object -First 1
+          $Signature = ""
+          if ($SigFile) {
+            $Signature = Get-Content -Raw -LiteralPath $SigFile.FullName | ForEach-Object { $_.Trim() }
+          }
+
+          $Manifest = @{
+            version = $Version
+            notes   = $Notes
+            pub_date = $PubDate
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $Signature
+                url       = "$BaseUrl/$MsiName"
+              }
+            }
+          }
+
+          $ManifestJson = $Manifest | ConvertTo-Json -Depth 3
+          Write-Host "Manifest:"
+          Write-Host $ManifestJson
+
+          $ManifestPath = Join-Path "${{ github.workspace }}" "latest-beta.json"
+          Set-Content -LiteralPath $ManifestPath -Value $ManifestJson -Encoding UTF8
+          Write-Host "manifest=$ManifestPath" | Out-File -Append $env:GITHUB_OUTPUT
+
+      # ---------------------------------------------------------------
+      # 12. Commit updated manifest to repo (for raw.githubusercontent.com)
+      #     Only runs if the GITHUB_TOKEN has write access to the repo.
+      # ---------------------------------------------------------------
+      - name: Commit updated manifest to repo
+        shell: pwsh
+        run: |
+          $ManifestPath = "${{ steps.manifest.outputs.manifest }}"
+          $RepoManifest = Join-Path "${{ github.workspace }}" "releases\latest-beta.json"
+          Copy-Item -LiteralPath $ManifestPath -Destination $RepoManifest -Force
+          git config user.name "officepilot-bot"
+          git config user.email "bot@officepilot.ai"
+          git add releases/latest-beta.json
+          $dirty = git diff --cached --quiet; if ($LASTEXITCODE -eq 0) { Write-Host "No changes to commit"; exit 0 }
+          git commit -m "Update beta release manifest [skip ci]"
+          git push
+
+      # ---------------------------------------------------------------
+      # 13. Publish to GitHub Releases
+      # ---------------------------------------------------------------
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $Tag = "${{ steps.version.outputs.release_tag }}"
+          $Version = "${{ steps.version.outputs.version }}"
+          $MsiPath = "${{ steps.artifacts.outputs.msi }}"
+          $NsisPath = "${{ steps.artifacts.outputs.nsis }}"
+          $SigPath = "${{ steps.artifacts.outputs.sig }}"
+          $ManifestPath = "${{ steps.manifest.outputs.manifest }}"
+
+          Write-Host "Tag: $Tag"
+          Write-Host "MSI: $MsiPath"
+          Write-Host "NSIS: $NsisPath"
+          Write-Host "SIG: $SigPath"
+          Write-Host "Manifest: $ManifestPath"
+
+          gh release create "$Tag" `
+            --title "OfficePilot AI Beta $Version" `
+            --notes "Beta release $Version — see docs/KNOWN_LIMITATIONS.md for current limitations." `
+            --prerelease `
+            --target "${{ github.sha }}" || `
+            Write-Host "Release tag $Tag may already exist — will upload assets."
+
+          if ($MsiPath) { gh release upload "$Tag" "$MsiPath" --clobber }
+          if ($NsisPath) { gh release upload "$Tag" "$NsisPath" --clobber }
+          if ($SigPath) { gh release upload "$Tag" "$SigPath" --clobber }
+          if ($ManifestPath) { gh release upload "$Tag" "$ManifestPath" --clobber }
+
+          Write-Host "Release published: https://github.com/${{ github.repository }}/releases/tag/$Tag"

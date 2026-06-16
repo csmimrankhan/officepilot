@@ -1,0 +1,8 @@
+engine,fixture,file,runtime_ms,used_ocr,text_source,vendor_match,invoice_number_match,invoice_date_match,due_date_match,currency_match,subtotal_match,tax_match,total_amount_match,line_item_count,line_item_count_match,warnings
+existing,alpha_office_supplies,alpha_office_supplies.pdf,12.38,False,pymupdf,True,True,True,True,False,True,True,True,3,True,
+existing,beta_logistics,beta_logistics.pdf,29.51,False,pymupdf,True,True,True,True,False,True,True,True,2,True,
+existing,gamma_consulting,gamma_consulting.pdf,20.04,False,pymupdf,True,True,True,True,False,True,True,True,2,True,
+
+# Per-engine summary
+engine,runs,line_item_count_accuracy,avg_runtime_ms,ocr_used_pct,total_warnings
+existing,3,1.0,20.64,0.0,0

@@ -1,0 +1,47 @@
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+.env
+.venv/
+venv/
+
+# ── Node ────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+
+# ── Rust / Tauri ────────────────────────────────────────────────
+desktop/tauri/src-tauri/target/
+desktop/tauri/src-tauri/binaries/
+
+# ── IDE ─────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Runtime data (not committed) ────────────────────────────────
+*.db
+data/
+storage/
+backend/static/releases/
+
+# ── Build / release artifacts ───────────────────────────────────
+build/
+releases/
+pilot-release-*/
+*.log
+*.msi
+*.zip
+*.exe
+
+# ── Secrets & signing material ──────────────────────────────────
+.updater-private-key.pem
+*.pem
+
+# ── OS ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

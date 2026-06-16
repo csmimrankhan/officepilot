@@ -1,0 +1,8 @@
+=== SAMPLE INVOICE (Demo Data) ===
+Invoice Number: INV-DEMO-2026-002
+Vendor: Globex Industries
+Date: 2026-02-20
+Amount: $5,678.90
+Description: Q1 consulting services
+Status: Approved
+====================================

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OfficePilot AI — Universal Voice Accountant Agent</title>
+<style>
+:root{--primary:#1f4e78;--primary-light:#2a6ba3;--bg:#f5f7fa;--card:#fff;--text:#333;--text-light:#666}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+header{background:linear-gradient(135deg,var(--primary),#163a5a);color:#fff;padding:80px 0 60px;text-align:center}
+header h1{font-size:2.8rem;margin-bottom:12px}
+header p{font-size:1.2rem;opacity:.9;max-width:720px;margin:0 auto 28px}
+.btn{display:inline-block;padding:14px 32px;border-radius:6px;font-weight:600;text-decoration:none;cursor:pointer;font-size:1rem;border:none;transition:all .2s}
+.btn-primary{background:#fff;color:var(--primary)}
+.btn-primary:hover{background:#e8edf3}
+.btn-secondary{background:transparent;color:#fff;border:2px solid rgba(255,255,255,.5);margin-left:12px}
+.btn-secondary:hover{border-color:#fff}
+section{padding:60px 0}
+section h2{text-align:center;font-size:2rem;color:var(--primary);margin-bottom:40px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.card{background:var(--card);border-radius:10px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.card h3{color:var(--primary);margin-bottom:8px;font-size:1.15rem}
+.card p{color:var(--text-light);font-size:.95rem}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;counter-reset:step}
+.step{background:var(--card);border-radius:10px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.08);position:relative}
+.step::before{counter-increment:step;content:counter(step);position:absolute;top:-12px;left:-12px;width:36px;height:36px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}
+.step h3{margin-bottom:6px;color:var(--primary)}
+.step p{color:var(--text-light);font-size:.9rem}
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px}
+.badge{background:var(--card);border-radius:8px;padding:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid #e0e7ef}
+.badge strong{color:var(--primary);display:block;margin-bottom:4px}
+.demo-box{background:var(--card);border-radius:10px;padding:32px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:24px}
+.demo-box p{color:var(--text-light);font-size:1.05rem}
+.waitlist-form{max-width:520px;margin:0 auto}
+.waitlist-form input,.waitlist-form select,.waitlist-form textarea{width:100%;padding:12px 14px;border:1px solid #d0d7de;border-radius:6px;font-size:.95rem;margin-bottom:14px;font-family:inherit}
+.waitlist-form input:focus,.waitlist-form select:focus,.waitlist-form textarea:focus{outline:2px solid var(--primary-light);border-color:transparent}
+.waitlist-form label{font-weight:600;display:block;margin-bottom:4px;color:var(--text)}
+.waitlist-form .btn-primary{background:var(--primary);color:#fff;width:100%;margin-top:8px}
+.waitlist-form .btn-primary:hover{background:var(--primary-light)}
+.thank-you{text-align:center;padding:40px;background:var(--card);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.thank-you h3{color:var(--primary);font-size:1.5rem;margin-bottom:8px}
+.thank-you p{color:var(--text-light)}
+.error{color:#d32f2f;background:#fde8e8;padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:.9rem}
+details{background:var(--card);border-radius:8px;margin-bottom:10px;padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer}
+details summary{font-weight:600;color:var(--primary);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details summary::after{content:'+';font-size:1.2rem;color:var(--text-light)}
+details[open] summary::after{content:'−'}
+details p{padding-top:10px;color:var(--text-light);font-size:.95rem}
+footer{background:var(--primary);color:rgba(255,255,255,.8);text-align:center;padding:32px 0;font-size:.9rem}
+footer a{color:#fff;text-decoration:underline;margin:0 8px}
+footer a:hover{opacity:.8}
+@media(max-width:600px){header h1{font-size:2rem}header{padding:50px 0 40px}.btn{display:block;width:100%;margin:8px 0!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>OfficePilot AI — Universal Voice Accountant Agent</h1>
+    <p>Use your voice to automate accounting work across Excel, browser apps, and any accounting platform — safely. Works with QuickBooks, Xero, Zoho Books, Odoo, FreshBooks, Wave, Sage, and any ERP you already use.</p>
+    <div>
+      <a href="#waitlist" class="btn btn-primary">Join the Early Pilot Program</a>
+      <a href="#faq" class="btn btn-secondary">Learn More</a>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="container">
+    <h2>The Problem</h2>
+    <div class="card-grid">
+      <div class="card"><h3>Manual Data Entry</h3><p>Hours wasted copying invoice data from PDFs and emails into spreadsheets and accounting systems. Prone to typos and errors.</p></div>
+      <div class="card"><h3>Email Chaos</h3><p>Invoices arrive across multiple inboxes. No central place to track, approve, or audit them before they hit your books.</p></div>
+      <div class="card"><h3>No Audit Trail</h3><p>Who approved what? When was an invoice changed? Without a local audit log and version history, you're flying blind.</p></div>
+      <div class="card"><h3>Repetitive Workflows</h3><p>Same steps every day: download invoices, open Excel, create summaries. OfficePilot records your workflow once and replays it with voice approval.</p></div>
+  </div>
+</section>
+
+<section style="background:#e8edf3">
+  <div class="container">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step"><h3>Tell OfficePilot What to Do</h3><p>Use voice or text to describe your task: "Create a vendor payment report", "Update my Excel sheet", "Copy this balance into my spreadsheet".</p></div>
+      <div class="step"><h3>Review the Plan</h3><p>OfficePilot builds a step-by-step plan. You preview every action before any click, type, or data change happens.</p></div>
+      <div class="step"><h3>Approve &amp; Execute</h3><p>Approve the plan by voice or click. Each step is executed safely with your permission. Nothing happens silently.</p></div>
+      <div class="step"><h3>Record &amp; Replay</h3><p>Record your workflow with voice — OfficePilot captures every step. Name it with AI and replay it anytime with approval checkpoints.</p></div>
+      <div class="step"><h3>Sync with QuickBooks</h3><p>Read-only sync to QuickBooks Online. Preview synced data (accounts, customers, invoices) before approving. Safe sandbox mode for testing.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="container">
+    <h2>Demo Walkthrough</h2>
+    <div class="demo-box">
+      <p>Upload a sample invoice → Review extracted fields → Approve → Export to Excel → Check the audit log → Restore a previous version.</p>
+      <p style="margin-top:12px;color:var(--text-light);font-size:.9rem">The full 15-minute demo covers Gmail import, workflow automation, browser test form, QuickBooks sync, workflow recording, screen assistant, and safety policy.</p>
+    </div>
+    <div style="margin-top:40px;text-align:center;color:var(--text-light);font-size:.9rem;border:2px dashed #d0d7de;border-radius:10px;padding:40px">
+      <strong style="color:var(--primary);display:block;margin-bottom:8px">Screenshot: Invoice Review Queue</strong>
+      <p>The Review Queue page showing a list of extracted invoices with confidence scores, Approve/Reject buttons, and status filters.</p>
+      <p style="margin-top:6px;font-style:italic">(Screenshot to be captured — see marketing/assets for the full checklist)</p>
+    </div>
+  </div>
+</section>
+
+<section style="background:#e8edf3" id="safety">
+  <div class="container">
+    <h2>Safety &amp; Trust</h2>
+    <div class="badge-grid">
+      <div class="badge"><strong>Local-First</strong>All data stays on your machine. No cloud dependency.</div>
+      <div class="badge"><strong>Approval Gates</strong>Every write, submit, and click requires approval.</div>
+      <div class="badge"><strong>Audit Logs</strong>Every action is timestamped and attributed.</div>
+      <div class="badge"><strong>Restore</strong>Snapshots before every mutation. Undo any change.</div>
+      <div class="badge"><strong>Open Source</strong>Code is published for review and self-hosting.</div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container">
+    <h2>Frequently Asked Questions</h2>
+    <details><summary>What does OfficePilot do?</summary><p>OfficePilot automates invoice processing. It reads invoice PDFs and emails, extracts line items and totals, lets you review and approve them, then exports to Excel or syncs to QuickBooks/Xero. Everything is logged and restorable.</p></details>
+    <details><summary>Is OfficePilot a cloud service?</summary><p>No. OfficePilot runs entirely on your local machine. All data stays on your computer unless you explicitly connect it to Gmail, QuickBooks, or Xero. No data is sent to external AI providers.</p></details>
+    <details><summary>Does OfficePilot require internet access?</summary><p>The core app works offline. Internet is only needed for optional features: Gmail email import, QuickBooks/Xero accounting sync, and browser automation. If you use only local invoice upload + Excel export, no internet is needed.</p></details>
+    <details><summary>Is my data safe?</summary><p>Yes. OfficePilot is local-first. All invoice data, audit logs, and version history are stored in a local SQLite database. You can export your data at any time. File snapshots before every restore operation. The app has a Safety Policy Center, role-based permissions, and an emergency kill switch.</p></details>
+    <details><summary>Can OfficePilot access my bank accounts?</summary><p>No. OfficePilot does not connect to banks, process payments, or automate banking websites. Banking domains are blocked in browser automation mode. The app is designed for invoice processing — not payment execution.</p></details>
+    <details><summary>Does OfficePilot use AI for extraction?</summary><p>OfficePilot uses a combination of PDF parsing (PyMuPDF, pdfplumber), OCR (Tesseract), and pattern matching to extract invoice data. It does NOT use external AI APIs or cloud LLMs. All extraction happens locally.</p></details>
+    <details><summary>Can I use OfficePilot with my accounting software?</summary><p>OfficePilot supports QuickBooks Online and Xero via their official APIs. Sync is preview-first: you review a draft entry before it reaches your accounting system. Both mock/sandbox and real modes are supported.</p></details>
+    <details><summary>Who should use OfficePilot?</summary><p>OfficePilot is designed for accountants, bookkeepers, administrative teams, small business owners, and BPO/outsourcing firms who process invoices regularly and want a local, auditable, safe automation layer.</p></details>
+    <details><summary>Is OfficePilot open source?</summary><p>OfficePilot is source-available. The code is published on GitHub for review and self-hosting. The project uses a standard open-source license. Commercial use terms are defined in the license.</p></details>
+    <details><summary>Does OfficePilot support multiple users?</summary><p>Yes. OfficePilot has built-in role-based permissions with 5 roles and 18 permissions. The first user to register becomes the owner and can invite/manage other users.</p></details>
+    <details><summary>How do I get started?</summary><p>Download the latest installer from the GitHub releases page, run the setup, and register as the first owner. The built-in onboarding wizard will guide you through whisper model setup, local LLM configuration, and a voice test. Demo mode is also available with sample invoice data.</p></details>
+    <details><summary>What is the Voice Recorder?</summary><p>The Voice Recorder lets you record any workflow by voice. Start recording, perform your steps, stop recording — OfficePilot captures every event and converts it into a reusable skill with AI-generated name and trigger phrases. Replay the skill anytime with approval checkpoints.</p></details>
+  </div>
+</section>
+
+<section id="waitlist" style="background:#e8edf3">
+  <div class="container">
+    <h2>Join the Early Pilot Program</h2>
+    <p style="text-align:center;color:var(--text-light);margin-bottom:28px;max-width:520px;margin-left:auto;margin-right:auto">Try OfficePilot free during our early pilot program. No credit card needed. Sample data included so you can explore before using your own invoices.</p>
+    <div id="waitlist-form-container" class="waitlist-form">
+      <form id="waitlist-form">
+        <label for="name">Name *</label>
+        <input type="text" id="name" required placeholder="Your full name">
+        <label for="email">Email *</label>
+        <input type="email" id="email" required placeholder="you@company.com">
+        <label for="company">Company</label>
+        <input type="text" id="company" placeholder="Company name (optional)">
+        <label for="role">Role</label>
+        <select id="role">
+          <option value="">Select your role (optional)</option>
+          <option>Accountant</option>
+          <option>Bookkeeper</option>
+          <option>Admin Assistant</option>
+          <option>SME Owner</option>
+          <option>BPO/Outsourcing</option>
+          <option>Other</option>
+        </select>
+        <label for="invoice-volume">Monthly Invoice Volume</label>
+        <select id="invoice-volume">
+          <option value="">Select volume (optional)</option>
+          <option>&lt;50/month</option>
+          <option>50-200/month</option>
+          <option>200-1000/month</option>
+          <option>1000+/month</option>
+        </select>
+        <label style="margin-top:8px;display:flex;align-items:center;gap:8px;font-weight:400">
+          <input type="checkbox" id="quickbooks-interest" />
+          I use QuickBooks Online and want to try read-only sync
+        </label>
+        <div id="waitlist-error" class="error" style="display:none"></div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+      <div id="waitlist-thankyou" class="thank-you" style="display:none">
+        <h3>Thank You!</h3>
+        <p>We've received your information and will reach out with early access details.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/anomalyco/officepilot" target="_blank" rel="noopener">GitHub</a> |
+      <a href="https://opencode.ai" target="_blank" rel="noopener">Documentation</a> |
+      <a href="https://github.com/anomalyco/officepilot/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+    </p>
+    <p style="margin-top:8px">&copy; 2026 OfficePilot AI. Local-first invoice automation.</p>
+  </div>
+</footer>
+
+<script>
+document.getElementById('waitlist-form').addEventListener('submit', async function(e) {
+  e.preventDefault()
+  const errorEl = document.getElementById('waitlist-error')
+  const btn = this.querySelector('button[type="submit"]')
+  errorEl.style.display = 'none'
+  btn.disabled = true
+  btn.textContent = 'Submitting...'
+  try {
+    const body = {
+      name: document.getElementById('name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      company: document.getElementById('company').value.trim() || undefined,
+      role: document.getElementById('role').value || undefined,
+      invoice_volume: document.getElementById('invoice-volume').value || undefined,
+      interested_features: document.getElementById('quickbooks-interest').checked ? 'quickbooks_sync' : undefined,
+    }
+    const res = await fetch('/api/public/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.detail || 'Submission failed')
+    }
+    try {
+      await fetch('/api/public/page-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_type: 'waitlist_signup', page: 'landing' })
+      })
+    } catch {}
+    document.getElementById('waitlist-form').style.display = 'none'
+    document.getElementById('waitlist-thankyou').style.display = 'block'
+  } catch (err) {
+    errorEl.textContent = err.message || 'Something went wrong. Please try again.'
+    errorEl.style.display = 'block'
+    btn.disabled = false
+    btn.textContent = 'Submit'
+  }
+})
+</script>
+
+</body>
+</html>

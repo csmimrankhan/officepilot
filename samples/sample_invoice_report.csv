@@ -1,0 +1,11 @@
+Invoice#,Vendor,Date,Description,Amount,Tax,Total,Status
+INV-001,Acme Corp,2026-01-15,Office Supplies,1500.0,150.0,1650.0,Paid
+INV-002,Globex Inc,2026-01-18,Software License,2999.0,299.9,3298.9,Pending
+INV-003,Initech,2026-01-20,Consulting Services,5000.0,500.0,5500.0,Paid
+INV-004,Hooli LLC,2026-02-01,Cloud Infrastructure,8750.0,875.0,9625.0,Overdue
+INV-005,Stark Industries,2026-02-05,Equipment Rental,3200.0,320.0,3520.0,Paid
+INV-006,Wayne Enterprises,2026-02-10,Legal Services,12000.0,0.0,12000.0,Pending
+INV-007,Oscorp,2026-02-15,R&D Materials,6750.0,675.0,7425.0,Paid
+INV-008,Massive Dynamic,2026-02-20,Marketing Campaign,4500.0,450.0,4950.0,Pending
+INV-009,Cyberdyne Systems,2026-03-01,IT Support Contract,8500.0,850.0,9350.0,Paid
+INV-010,Wonka Industries,2026-03-05,Logistics & Shipping,2400.0,240.0,2640.0,Overdue

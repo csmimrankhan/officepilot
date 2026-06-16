@@ -1,0 +1,6 @@
+Invoice Number,Vendor,Amount,Date,Status
+INV-DEMO-2026-001,Acme Corporation,1234.56,2026-01-15,Pending
+INV-DEMO-2026-002,Globex Industries,5678.90,2026-02-20,Approved
+INV-DEMO-2026-003,Initech Solutions,999.99,2026-03-10,Pending
+INV-DEMO-2026-004,Stark Enterprises,15000.00,2026-04-05,Approved
+INV-DEMO-2026-005,Wayne Technologies,3200.00,2026-05-12,Pending

@@ -1,0 +1,8 @@
+=== SAMPLE INVOICE (Demo Data) ===
+Invoice Number: INV-DEMO-2026-004
+Vendor: Stark Enterprises
+Date: 2026-04-05
+Amount: $15,000.00
+Description: R&D project Phase 2 milestone
+Status: Approved
+====================================

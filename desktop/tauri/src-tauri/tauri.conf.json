@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "OfficePilot AI",
+  "version": "0.36.1",
+  "identifier": "ai.officepilot.desktop",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../../frontend run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm --prefix ../../frontend run build",
+    "frontendDist": "../../../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "OfficePilot AI",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "center": true,
+        "decorations": true,
+        "fullscreen": false,
+        "url": "index.html"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Local-first invoice automation",
+    "longDescription": "OfficePilot AI is a Windows desktop shell that hosts a local Python FastAPI agent. All invoice, export, and audit data stays on your machine.",
+    "publisher": "OfficePilot",
+    "copyright": "(c) 2026 OfficePilot",
+    "homepage": "https://officepilot.local",
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine",
+        "languages": ["English"]
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "signCommand": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../../scripts/sign_installers.ps1",
+      "certificateThumbprint": null,
+      "timestampUrl": "http://timestamp.sectigo.com",
+      "digestAlgorithm": "sha256"
+    },
+    "resources": [
+      "binaries/whisper-cli.exe",
+      "binaries/models/*"
+    ],
+    "externalBin": [
+      "binaries/officepilot-agent"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://raw.githubusercontent.com/anomalyco/officepilot/main/releases/latest-beta.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU0M0FERjg5OUY0NTM2QjUKUldTMU5rV2ZpZDg2VkdKMHd5ZDFuM3JCbEhYcVZ2ZUZqNXBzcWxFdWxWc2tRWFdqczRvbEd2SWUK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

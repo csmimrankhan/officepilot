@@ -1,0 +1,9 @@
+# Golden-invoice fixtures: keep the JSON definitions in the repo,
+# but the generated PDFs are derived and gitignored.
+
+*.pdf
+!build_golden.py
+
+# Don't commit benchmark output
+benchmark_*.json
+benchmark_*.csv

@@ -1,0 +1,89 @@
+{
+  "alpha_office_supplies": {
+    "currency": "USD",
+    "due_date": "2026-06-11",
+    "file": "alpha_office_supplies.pdf",
+    "invoice_date": "2026-05-12",
+    "invoice_number": "GOLDEN-2026-0001",
+    "line_items": [
+      {
+        "description": "Printer Paper A4",
+        "line_total": 45.0,
+        "quantity": 10,
+        "unit_price": 4.5
+      },
+      {
+        "description": "Toner Cartridge HP 26X",
+        "line_total": 356.0,
+        "quantity": 4,
+        "unit_price": 89.0
+      },
+      {
+        "description": "Stapler Heavy Duty",
+        "line_total": 29.5,
+        "quantity": 2,
+        "unit_price": 14.75
+      }
+    ],
+    "mime_type": "application/pdf",
+    "notes": "synthetic golden fixture (no real client data)",
+    "subtotal": 430.5,
+    "tax": 30.14,
+    "total_amount": 460.64,
+    "vendor_name": "Alpha Office Supplies"
+  },
+  "beta_logistics": {
+    "currency": "EUR",
+    "due_date": "2026-05-22",
+    "file": "beta_logistics.pdf",
+    "invoice_date": "2026-04-22",
+    "invoice_number": "BL-2026-0777",
+    "line_items": [
+      {
+        "description": "Sea Freight - TEU",
+        "line_total": 750.0,
+        "quantity": 3,
+        "unit_price": 250.0
+      },
+      {
+        "description": "Port Handling Fee",
+        "line_total": 120.0,
+        "quantity": 1,
+        "unit_price": 120.0
+      }
+    ],
+    "mime_type": "application/pdf",
+    "notes": "synthetic golden fixture (no real client data)",
+    "subtotal": 870.0,
+    "tax": 191.4,
+    "total_amount": 1061.4,
+    "vendor_name": "Beta Logistics LLC"
+  },
+  "gamma_consulting": {
+    "currency": "USD",
+    "due_date": "2026-03-31",
+    "file": "gamma_consulting.pdf",
+    "invoice_date": "2026-03-01",
+    "invoice_number": "GC-INV-26-99",
+    "line_items": [
+      {
+        "description": "Strategy workshop",
+        "line_total": 4500.0,
+        "quantity": 1,
+        "unit_price": 4500.0
+      },
+      {
+        "description": "Follow-up report",
+        "line_total": 1200.0,
+        "quantity": 1,
+        "unit_price": 1200.0
+      }
+    ],
+    "mime_type": "application/pdf",
+    "notes": "synthetic golden fixture (no real client data)",
+    "subtotal": 5700.0,
+    "tax": 399.0,
+    "total_amount": 6099.0,
+    "vendor_name": "Gamma Consulting"
+  }
+}

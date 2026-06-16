@@ -1,0 +1,14 @@
+{
+  "provider": "quickbooks_sandbox",
+  "action": "create_invoice",
+  "preview": {
+    "invoice_number": "INV-DEMO-2026-001",
+    "vendor": "Acme Corporation",
+    "amount": 1234.56,
+    "account": "Accounts Receivable",
+    "due_date": "2026-02-15"
+  },
+  "matched_invoice": "INV-DEMO-2026-001",
+  "duplicate_warning": false,
+  "simulated": true
+}

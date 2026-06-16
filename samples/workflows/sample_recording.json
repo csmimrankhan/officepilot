@@ -1,0 +1,13 @@
+{
+  "name": "Demo Invoice Processing",
+  "status": "completed",
+  "steps": [
+    {"type": "open", "target": "invoices", "description": "Open invoice folder"},
+    {"type": "click", "target": "upload_button", "description": "Click upload button"},
+    {"type": "fill", "field": "vendor", "value": "Acme Corp", "description": "Fill vendor name"},
+    {"type": "fill", "field": "amount", "value": "1234.56", "description": "Fill invoice amount"},
+    {"type": "click", "target": "submit_button", "description": "Submit invoice"}
+  ],
+  "created_at": "2026-06-01T12:00:00Z",
+  "duration_seconds": 45
+}

@@ -1,0 +1,15 @@
+{
+  "url": "http://localhost:5173/demo-test-form",
+  "action_type": "fill_form",
+  "risk_level": "low",
+  "approval_status": "approved",
+  "execution_status": "completed",
+  "preview_data": {
+    "fields": [
+      {"name": "vendor", "value": "Acme Corp"},
+      {"name": "amount", "value": "1234.56"},
+      {"name": "description", "value": "Office supplies"}
+    ]
+  },
+  "result_summary": "Demo form filled successfully"
+}

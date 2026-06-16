@@ -1,0 +1,61 @@
+# Research / toolkit-spike artifacts
+# These are intentionally NOT committed to the repo.
+
+# Spike outputs
+**/out/
+**/outputs/
+**/cache/
+**/.cache/
+**/__pycache__/
+**/*.pyc
+
+# Sample fixtures that may contain real data (we ship synthetic ones only)
+**/real_*
+**/private_*
+
+# Tokens, credentials, screenshots, recordings
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.mp4
+**/*.mov
+**/*.webm
+**/*.wav
+**/*.mp3
+**/screenshots/
+**/recordings/
+**/traces/
+
+# Token / credential files
+**/token*.json
+**/*credentials*.json
+**/*.token
+**/.env.local
+**/.env.*.local
+
+# Model weights and large artifacts
+**/*.bin
+**/*.safetensors
+**/*.onnx
+**/.huggingface/
+**/.cache/huggingface/
+**/models/
+
+# Browser-Use / Playwright outputs
+**/playwright-report/
+**/test-results/
+**/playwright/.cache/
+
+# LangGraph / LangChain traces
+**/langgraph.db
+**/langgraph_checkpoints/
+**/tracer_v3.db
+
+# OpenAdapt artifacts
+**/openadapt_recordings/
+**/openadapt_output/
+
+# Virtualenvs (if anyone runs spikes in a venv)
+**/.venv/
+**/venv/

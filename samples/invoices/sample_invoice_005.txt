@@ -1,0 +1,8 @@
+=== SAMPLE INVOICE (Demo Data) ===
+Invoice Number: INV-DEMO-2026-005
+Vendor: Wayne Technologies
+Date: 2026-05-12
+Amount: $3,200.00
+Description: Network infrastructure upgrade
+Status: Pending Review
+====================================
