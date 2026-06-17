@@ -7,14 +7,14 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from app.models.screen_control_policy import (
+from app.models.screen_control import (
     DEFAULT_ALLOWED_APPS,
     DEFAULT_BLOCKED_APPS,
+    ScreenControlAction,
     ScreenControlPolicy,
+    ScreenControlSession,
+    ScreenControlStepLog,
 )
-from app.models.screen_control_session import ScreenControlSession
-from app.models.screen_control_action import ScreenControlAction
-from app.models.screen_control_step_log import ScreenControlStepLog
 
 # ---------------------------------------------------------------------------
 # Unit tests

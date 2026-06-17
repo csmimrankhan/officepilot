@@ -33,10 +33,12 @@ from .workflow_recording_session import WorkflowRecordingSession
 from .recorded_workflow_step import RecordedWorkflowStep
 from .workflow_replay_run import WorkflowReplayRun
 from .workflow_replay_step_log import WorkflowReplayStepLog
-from .screen_control_policy import ScreenControlPolicy
-from .screen_control_session import ScreenControlSession
-from .screen_control_action import ScreenControlAction
-from .screen_control_step_log import ScreenControlStepLog
+from .screen_control import (
+    ScreenControlPolicy,
+    ScreenControlSession,
+    ScreenControlAction,
+    ScreenControlStepLog,
+)
 from .safety_policy import SafetyPolicy
 from .role_permission import RolePermission
 from .audit_export import AuditExport

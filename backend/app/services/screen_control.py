@@ -29,15 +29,15 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..models.audit_log import AuditLog
-from ..models.screen_control_action import ScreenControlAction
-from ..models.screen_control_policy import (
+from ..models.screen_control import (
     DEFAULT_ALLOWED_APPS,
     DEFAULT_BLOCKED_APPS,
     DEFAULT_BLOCKED_DOMAINS,
+    ScreenControlAction,
     ScreenControlPolicy,
+    ScreenControlSession,
+    ScreenControlStepLog,
 )
-from ..models.screen_control_session import ScreenControlSession
-from ..models.screen_control_step_log import ScreenControlStepLog
 
 logger = logging.getLogger("officepilot.screen_control")
 

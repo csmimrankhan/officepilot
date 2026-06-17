@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, formatDateTime } from '../api.js'
-import RestoreConfirmModal from '../components/RestoreConfirmModal.jsx'
+import RestoreConfirmModal from '../components/RestoreConfirmModal.tsx'
 
 export default function WorkflowVersions() {
   const { id: idParam } = useParams()

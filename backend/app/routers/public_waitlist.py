@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -32,7 +32,7 @@ from ..services.public_pilot_waitlist import (
 )
 from fastapi.responses import PlainTextResponse
 
-router = APIRouter(tags=["phase20"])
+router = APIRouter(tags=["admin"])
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -65,8 +65,7 @@ class WaitlistEntryResponse(BaseModel):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WaitlistStatusUpdateRequest(BaseModel):

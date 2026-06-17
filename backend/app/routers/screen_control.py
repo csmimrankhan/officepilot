@@ -38,14 +38,14 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import get_db
-from ..models.screen_control_action import ScreenControlAction
-from ..models.screen_control_policy import (
+from ..models.screen_control import (
     DEFAULT_ALLOWED_APPS,
     DEFAULT_BLOCKED_APPS,
+    ScreenControlAction,
     ScreenControlPolicy,
+    ScreenControlSession,
+    ScreenControlStepLog,
 )
-from ..models.screen_control_session import ScreenControlSession
-from ..models.screen_control_step_log import ScreenControlStepLog
 from ..schemas.screen_control import (
     ScreenActionApproveResponse,
     ScreenActionPreviewResponse,

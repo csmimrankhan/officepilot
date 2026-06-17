@@ -70,7 +70,7 @@ from ..services.workflow_recording import (
 from ..services.audit import log_action
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/recording", tags=["workflow_recording"])
+router = APIRouter(prefix="/api/recording", tags=["workflows"])
 
 
 # ── Policy ─────────────────────────────────────────────────────────────────

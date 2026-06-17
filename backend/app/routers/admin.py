@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy.orm import Session
 
 from ..config import get_settings, Settings
@@ -66,8 +66,7 @@ class UserListResponse(BaseModel):
     gmail_connected: bool = False
     cloud_ai_allowed: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserListResult(BaseModel):
@@ -95,8 +94,7 @@ class UserDetailResponse(BaseModel):
     gmail_connected: bool = False
     cloud_ai_allowed: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditLogEntry(BaseModel):
@@ -108,8 +106,7 @@ class AuditLogEntry(BaseModel):
     entity_id: Optional[str] = None
     details: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditLogResult(BaseModel):
@@ -507,8 +504,7 @@ class ReleaseResponse(BaseModel):
     is_critical: bool
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("/releases", response_model=list[ReleaseResponse])

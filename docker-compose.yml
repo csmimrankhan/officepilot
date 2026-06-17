@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: officepilot-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - officepilot_data:/app/data
+      - officepilot_storage:/app/storage
+    environment:
+      - OFFICEPILOT_ENV=development
+      - OFFICEPILOT_DB_URL=sqlite:///app/data/officepilot.db
+      - ALLOW_OPEN_REGISTRATION=true
+      - ALLOW_FIRST_OWNER_BOOTSTRAP=true
+      - BROWSER_AUTOMATION_ENABLED=false
+      - USAGE_TRACKING_ENABLED=false
+      - PUBLIC_ANALYTICS_ENABLED=false
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: officepilot-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      - backend
+
+volumes:
+  officepilot_data:
+  officepilot_storage:

@@ -8,7 +8,7 @@ import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -104,8 +104,7 @@ class UserRead(BaseModel):
     auth_provider: str = "email"
     onboarding_completed: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuthResponse(BaseModel):

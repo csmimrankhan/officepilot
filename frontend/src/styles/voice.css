@@ -1,0 +1,98 @@
+.vr-mic-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 20px;
+}
+.vr-mic-btn {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 3px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.vr-mic-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+}
+.vr-mic-btn--recording {
+  border-color: #dc2626;
+  color: #fff;
+  background: #dc2626;
+  animation: vr-pulse 1.5s ease-in-out infinite;
+}
+.vr-mic-btn--recording:hover {
+  border-color: #b91c1c;
+  background: #b91c1c;
+  color: #fff;
+}
+@keyframes vr-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+  50% { box-shadow: 0 0 0 16px rgba(220,38,38,0); }
+}
+.vr-status-label { font-size: 14px; }
+.vr-recording-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 15px;
+}
+.vr-recording-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: vr-blink 1s step-end infinite;
+}
+@keyframes vr-blink { 50% { opacity: 0.3; } }
+.vr-transcript-section, .vr-actions-card, .vr-draft-card, .vr-saved-card { margin-top: 20px; }
+.vr-hint-card { margin-top: 16px; }
+.vr-transcript-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vr-transcript-item {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 13px;
+  border-left: 3px solid #2563eb;
+}
+.vr-transcript-time {
+  color: #94a3b8;
+  font-size: 11px;
+  white-space: nowrap;
+  min-width: 60px;
+}
+.vr-transcript-text { color: #1e293b; }
+.vr-event-list { display: flex; flex-direction: column; gap: 4px; }
+.vr-event-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.vr-phrase-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.vr-draft-step {
+  padding: 4px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f1f5f9;
+}

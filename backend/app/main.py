@@ -218,17 +218,38 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="OfficePilot AI — Universal Voice Accountant Agent",
         description=(
-            "Invoice extraction (P1) + Gmail automation (P2) + Trust layer (P3) "
-            "+ Parser engine adapter (P5) + LangGraph workflow orchestration (P6) "
-            "+ Local desktop shell (P7) + Bundled sidecar / installer hardening (P8) "
-            "+ Async supervisor probe + auto-update (P9) "
-            "+ Version history, file snapshots, and restore (P10) "
-            "+ Sidecar startup UX, 60s boot grace, boot diagnostics (P11) "
-            "+ Browser automation with allowlist + preview + approval + audit (P12)."
-            "+ Phase 23: Universal Voice Accountant Agent + Workflow Memory."
+            "Windows desktop app that automates accounting work across Excel, browser apps, "
+            "and any accounting platform via voice/text commands, with step-by-step planning, "
+            "approval, safe execution, and workflow memory."
         ),
         version="0.36.1",
         lifespan=lifespan,
+        openapi_tags=[
+            {"name": "auth", "description": "User registration, login, JWT tokens, session management"},
+            {"name": "agent", "description": "Accountant agent — plan, approve, execute, repeat workflows"},
+            {"name": "invoices", "description": "Invoice upload, review, approve, reject, export"},
+            {"name": "browser", "description": "Browser automation with allowlist, preview, approval, audit"},
+            {"name": "email", "description": "Gmail read-only integration — search, preview, download attachments"},
+            {"name": "accounting", "description": "QuickBooks/Xero sync with preview, approval, and audit"},
+            {"name": "accounting-skills", "description": "Saved automation skills with trigger phrases and steps"},
+            {"name": "screen", "description": "Screen control, OCR, click/type with preview and approval"},
+            {"name": "voice", "description": "Voice command dispatch and transcription"},
+            {"name": "voice-layer", "description": "Windows voice layer — microphone recording, whisper.cpp"},
+            {"name": "workflows", "description": "LangGraph workflow engine — create, start, approve, retry"},
+            {"name": "versions", "description": "Version history, file snapshots, entity restore"},
+            {"name": "settings", "description": "App and folder rule settings"},
+            {"name": "admin", "description": "Admin dashboard — users, releases, audit logs, waitlist"},
+            {"name": "system", "description": "System health, cleanup, storage metrics"},
+            {"name": "demo", "description": "Demo mode — sample data, guided walkthrough"},
+            {"name": "onboarding", "description": "First-run onboarding wizard"},
+            {"name": "local", "description": "Desktop shell — storage, audit export, privacy dashboard"},
+            {"name": "app", "description": "App updates, device registration, notifications"},
+            {"name": "billing", "description": "Subscription plans, license management"},
+            {"name": "safety", "description": "Safety policies, kill switch, permissions"},
+            {"name": "audit", "description": "Audit logs and exports"},
+            {"name": "parser", "description": "Document parser engine (deprecated — use skills)"},
+            {"name": "meta", "description": "Health check and metadata endpoints"},
+        ],
     )
 
     app.add_middleware(
@@ -275,56 +296,78 @@ def create_app() -> FastAPI:
             },
         }
 
+    # ── Core business ───────────────────────────────────────────────
     app.include_router(invoices_router.router)
-    app.include_router(audit_router.router)
-    app.include_router(gmail_router.router)
-    app.include_router(email_imports_router.router)
     app.include_router(settings_router.router)
     app.include_router(parser_router.router)
-    app.include_router(workflows_router.router)
-    app.include_router(local_router.router)
-    app.include_router(versions_router.router)
-    app.include_router(browser_router.router)
-    app.include_router(accounting_router.router)
-    app.include_router(recording_router.router)
-    app.include_router(screen_router.router)
-    app.include_router(safety_router.router)
-    app.include_router(permissions_router.router)
-    app.include_router(audit_exports_router.router)
-    app.include_router(system_router.router)
-    app.include_router(backup_router.router)
+
+    # ── Auth & users ────────────────────────────────────────────────
     app.include_router(auth_router.router)
-    app.include_router(demo_router.router)
-    app.include_router(onboarding_router.router)
+    app.include_router(permissions_router.router)
+
+    # ── Workflow engine ────────────────────────────────────────────
+    app.include_router(workflows_router.router)
+    app.include_router(recording_router.router)
+    app.include_router(workflow_recorder_router.router)
+
+    # ── Email & Gmail ─────────────────────────────────────────────
+    app.include_router(gmail_router.router)
+    app.include_router(email_imports_router.router)
+    app.include_router(email_automation_router.router)
+
+    # ── Browser automation ─────────────────────────────────────────
+    app.include_router(browser_router.router)
+
+    # ── Screen control ────────────────────────────────────────────
+    app.include_router(screen_router.router)
+
+    # ── Accounting & sync ─────────────────────────────────────────
+    app.include_router(accounting_router.router)
+    app.include_router(accounting_skills_router.router)
+    app.include_router(quickbooks_router.router)
+
+    # ── Agent & AI ─────────────────────────────────────────────────
+    app.include_router(agent_router.router)
+    app.include_router(voice_router.router)
+    app.include_router(voice_layer_router.router)
+
+    # ── Safety & audit ─────────────────────────────────────────────
+    app.include_router(safety_router.router)
+    app.include_router(audit_router.router)
+    app.include_router(audit_exports_router.router)
+
+    # ── Version history ────────────────────────────────────────────
+    app.include_router(versions_router.router)
+
+    # ── Desktop / local ────────────────────────────────────────────
+    app.include_router(local_router.router)
+    app.include_router(backup_router.router)
+    app.include_router(app_updates_router.router)
+
+    # ── System & health ────────────────────────────────────────────
+    app.include_router(system_router.router)
     app.include_router(about_router.router)
     app.include_router(diagnostics_router.router)
-    # Phase 19
+
+    # ── Demo & onboarding ─────────────────────────────────────────
+    app.include_router(demo_router.router)
+    app.include_router(onboarding_router.router)
     app.include_router(demo_walkthrough_router.router)
+
+    # ── Feedback & bug reports ─────────────────────────────────────
     app.include_router(feedback_router.router)
     app.include_router(bug_reports_router.router)
+
+    # ── Usage & pilot ──────────────────────────────────────────────
     app.include_router(usage_router.router)
     app.include_router(pilot_readiness_router.router)
-    # Phase 20
     app.include_router(public_waitlist_router.router)
-    # Phase 22.5
-    app.include_router(voice_router.router)
-    # Phase 23
-    app.include_router(agent_router.router)
-    # Accounting Skills (Hermes-style skill memory)
-    app.include_router(accounting_skills_router.router)
-    # Phase 33 — Workflow Recorder MVP
-    app.include_router(workflow_recorder_router.router)
-    # Phase 34 — Gmail Read-Only Email Automation
-    app.include_router(email_automation_router.router)
-    # Phase 35 — Desktop Update + License Foundation
-    app.include_router(app_updates_router.router)
+
+    # ── Billing & licensing ────────────────────────────────────────
     app.include_router(billing_router.router)
-    # Phase 38.6 — QuickBooks read-only sync
-    app.include_router(quickbooks_router.router)
-    # Admin
+
+    # ── Admin (must be last — wildcard /* catches all) ─────────────
     app.include_router(admin_router.router)
-    # Phase 27 — Windows Voice Layer
-    app.include_router(voice_layer_router.router)
     # Phase 36 — Static releases for updater
     _releases_dir = settings.project_root / "releases"
     _releases_dir.mkdir(parents=True, exist_ok=True)

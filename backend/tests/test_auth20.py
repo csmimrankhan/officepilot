@@ -135,9 +135,9 @@ class TestRegistration:
         with pytest.raises(ValueError, match="already exists"):
             register_user(db_session, "dup@test.com", "Test@1234", "Dup User 2")
 
-    def test_empty_name_rejected(self, db_session: Session):
-        with pytest.raises(ValueError, match="Full name is required"):
-            register_user(db_session, "noname@test.com", "Test@1234", "")
+    def test_empty_name_auto_generates_from_email(self, db_session: Session):
+        user = register_user(db_session, "noname@test.com", "Test@1234", "")
+        assert user.full_name == "Noname"
 
     def test_weak_password_rejected(self, client):
         resp = client.post("/api/auth/register", json={

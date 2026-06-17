@@ -31,7 +31,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..config import Settings, get_settings
@@ -64,8 +64,7 @@ class VersionRead(BaseModel):
     restored_from_version: Optional[int]
     created_at: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VersionDiff(BaseModel):
@@ -107,8 +106,7 @@ class FileSnapshotRead(BaseModel):
     restore_status: str
     notes: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RestoreLogRead(BaseModel):
@@ -122,8 +120,7 @@ class RestoreLogRead(BaseModel):
     restored_by: str
     restored_at: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkflowVersionRead(BaseModel):
@@ -138,8 +135,7 @@ class WorkflowVersionRead(BaseModel):
     restored_from_version: Optional[int]
     created_at: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --------------------------------------------------------------------- helpers

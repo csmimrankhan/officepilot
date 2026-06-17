@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { api, formatDateTime } from '../api.js'
-import RestoreConfirmModal from '../components/RestoreConfirmModal.jsx'
+import RestoreConfirmModal from '../components/RestoreConfirmModal.tsx'
 
 export default function FileSnapshots() {
   const [fileType, setFileType] = useState('')

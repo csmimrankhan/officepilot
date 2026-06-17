@@ -20,8 +20,7 @@ from ..models.audit_log import AuditLog
 from ..models.browser_action_run import BrowserActionRun
 from ..models.browser_action_step import BrowserActionStep
 from ..models.accounting_sync_log import AccountingSyncLog
-from ..models.screen_control_action import ScreenControlAction
-from ..models.screen_control_session import ScreenControlSession
+from ..models.screen_control import ScreenControlAction, ScreenControlSession
 from ..models.workflow_run import WorkflowRun
 from ..models.restore_log import RestoreLog
 

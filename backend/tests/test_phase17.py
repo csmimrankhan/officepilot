@@ -105,10 +105,10 @@ class TestUserAuth:
         assert user.role == "owner"
         assert user.status == "active"
 
-    def test_second_user_is_staff(self, db_session: Session):
+    def test_second_user_is_user_role(self, db_session: Session):
         register_user(db_session, "owner@test.com", "Test@1234")
-        staff = register_user(db_session, "staff@test.com", "Test@1234")
-        assert staff.role == "staff"
+        second = register_user(db_session, "user@test.com", "Test@1234")
+        assert second.role == "user"
 
     def test_register_duplicate_email(self, db_session: Session):
         # Create first user directly to bypass registration-closed guard
@@ -252,17 +252,17 @@ class TestAuthAPI:
         assert "access_token" in data
         assert "refresh_token" in data
 
-    def test_register_second_user_becomes_staff(self, client):
+    def test_register_second_user_becomes_user(self, client):
         client.post("/api/auth/register", json={
             "email": "owner@test.com",
             "password": "Test@1234",
         })
         resp = client.post("/api/auth/register", json={
-            "email": "staff@test.com",
+            "email": "user@test.com",
             "password": "Test@1234",
         })
         assert resp.status_code == 201
-        assert resp.json()["user"]["role"] == "staff"
+        assert resp.json()["user"]["role"] == "user"
 
     def test_login(self, client):
         client.post("/api/auth/register", json={

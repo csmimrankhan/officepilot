@@ -56,10 +56,7 @@ from app.models import (  # noqa: E402,F401
     workflow_recording_policy, recorded_workflow, workflow_recording_session,
     recorded_workflow_step, workflow_replay_run, workflow_replay_step_log,
 )
-from app.models import (  # noqa: E402,F401
-    screen_control_policy, screen_control_session, screen_control_action,
-    screen_control_step_log,
-)
+from app.models import screen_control  # noqa: E402,F401
 from app.models import (  # noqa: E402,F401
     safety_policy, role_permission, audit_export,
 )

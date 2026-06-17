@@ -1,0 +1,19 @@
+   GRID HELPERS
+   =================================================================== */
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ===================================================================
+   LEGACY STYLES (preserved for existing pages)
+   =================================================================== */
+
+.subtle { color: var(--text-muted); font-size: 12px; }
+.muted { color: var(--text-muted); }
+.error { color: var(--danger); }
+
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.page-header h2 { margin: 0; font-size: 20px; }
+
+/* ===================================================================

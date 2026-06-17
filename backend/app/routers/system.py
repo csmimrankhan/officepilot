@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -61,8 +61,7 @@ class CleanupPreviewResponse(BaseModel):
     items: list[dict]
     total_bytes_estimate: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("/cleanup-preview", response_model=CleanupPreviewResponse)

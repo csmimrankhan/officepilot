@@ -27,7 +27,7 @@ from ..services.gmail_readonly_service import (
 from ..services.audit import log_action
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/email", tags=["email_automation_phase34"])
+router = APIRouter(prefix="/api/email", tags=["email"])
 
 
 # ── Request / Response models ───────────────────────────────────────────────

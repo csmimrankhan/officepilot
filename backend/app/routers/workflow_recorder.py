@@ -30,7 +30,7 @@ from ..services.workflow_recorder_service import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/workflow-recorder", tags=["workflow_recorder_phase33"])
+router = APIRouter(prefix="/api/workflow-recorder", tags=["workflows"])
 
 
 # ── Request / Response models ───────────────────────────────────────────────

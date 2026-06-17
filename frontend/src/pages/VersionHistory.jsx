@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, formatDateTime } from '../api.js'
-import RestoreConfirmModal from '../components/RestoreConfirmModal.jsx'
+import RestoreConfirmModal from '../components/RestoreConfirmModal.tsx'
 
 const ENTITY_PRESETS = [
   { type: 'invoice', label: 'Invoice', hint: 'e.g. invoice/42' },
