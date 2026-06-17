@@ -166,7 +166,25 @@ jobs:
           Write-Host "Sidecar copied to Tauri binaries dir"
 
       # ---------------------------------------------------------------
-      # 8. Build the Tauri app (MSI + NSIS)
+      # 8. Download Whisper binary (required for Tauri resources)
+      # ---------------------------------------------------------------
+      - name: Download Whisper binary
+        shell: pwsh
+        run: |
+          $ScriptDir = "${{ github.workspace }}\scripts"
+          $OutputDir = "${{ github.workspace }}\desktop\tauri\src-tauri\binaries"
+          & "$ScriptDir\download_whisper_cpp.ps1" -OutputDir $OutputDir
+          $ModelsDir = Join-Path $OutputDir "models"
+          if (-not (Test-Path $ModelsDir)) { New-Item -ItemType Directory -Path $ModelsDir -Force }
+          # Create placeholder model so Tauri build doesn't fail on missing resource
+          $Placeholder = Join-Path $ModelsDir "ggml-base.en.bin"
+          if (-not (Test-Path $Placeholder)) {
+            Set-Content -Path $Placeholder -Value "placeholder" -NoNewline
+            Write-Host "Created placeholder whisper model at $Placeholder"
+          }
+
+      # ---------------------------------------------------------------
+      # 9. Build the Tauri app (MSI + NSIS)
       # ---------------------------------------------------------------
       - name: Build Tauri app
         run: cargo tauri build --bundles msi,nsis
