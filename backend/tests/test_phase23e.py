@@ -52,7 +52,7 @@ def _reset_agent_env():
 @pytest.fixture()
 def client_with_auth(client):
     resp = client.post("/api/auth/register", json={
-        "email": "agent-user-23e@test.com", "password": "Test@123456", "full_name": "Agent User",
+        "email": "agent-user-23e@test.com", "password": "Test@123456", "confirm_password": "Test@123456", "full_name": "Agent User",
     })
     data = resp.json()
     token = data["access_token"]

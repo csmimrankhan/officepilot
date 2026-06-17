@@ -72,7 +72,8 @@ def user_token(client):
     resp = client.post("/api/auth/register", json={
         "email": "test@example.com",
         "password": "Password123!",
-        "name": "Test User",
+        "confirm_password": "Password123!",
+        "full_name": "Test User",
     })
     if resp.status_code == 200:
         data = resp.json()
