@@ -288,6 +288,14 @@ jobs:
         shell: pwsh
         run: |
           $ManifestPath = "${{ steps.manifest.outputs.manifest }}"
+          if ([string]::IsNullOrEmpty($ManifestPath)) {
+            Write-Host "No manifest path from previous step, skipping commit"
+            exit 0
+          }
+          if (-not (Test-Path -LiteralPath $ManifestPath)) {
+            Write-Host "Manifest file not found at $ManifestPath, skipping commit"
+            exit 0
+          }
           $RepoManifest = Join-Path "${{ github.workspace }}" "releases\latest-beta.json"
           Copy-Item -LiteralPath $ManifestPath -Destination $RepoManifest -Force
           git config user.name "officepilot-bot"
@@ -301,6 +309,7 @@ jobs:
       # 13. Publish to GitHub Releases
       # ---------------------------------------------------------------
       - name: Create GitHub Release
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
