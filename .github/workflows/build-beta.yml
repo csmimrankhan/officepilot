@@ -212,8 +212,8 @@ jobs:
             $Version = $Pkg.version
           }
           $ReleaseTag = "v$Version-beta"
-          Write-Host "version=$Version" | Out-File -Append $env:GITHUB_OUTPUT
-          Write-Host "release_tag=$ReleaseTag" | Out-File -Append $env:GITHUB_OUTPUT
+          "version=$Version" | Out-File -Append $env:GITHUB_OUTPUT
+          "release_tag=$ReleaseTag" | Out-File -Append $env:GITHUB_OUTPUT
           Write-Host "Version: $Version, Tag: $ReleaseTag"
 
       # ---------------------------------------------------------------
@@ -232,10 +232,10 @@ jobs:
           if (-not $MsiFiles) { throw "No MSI found in $BundleDir" }
           if (-not $NsisFiles) { throw "No NSIS found in $BundleDir" }
 
-          Write-Host "msi=$($MsiFiles[0].FullName)" | Out-File -Append $env:GITHUB_OUTPUT
-          Write-Host "nsis=$($NsisFiles[0].FullName)" | Out-File -Append $env:GITHUB_OUTPUT
+          "msi=$($MsiFiles[0].FullName)" | Out-File -Append $env:GITHUB_OUTPUT
+          "nsis=$($NsisFiles[0].FullName)" | Out-File -Append $env:GITHUB_OUTPUT
           if ($SigFile) {
-            Write-Host "sig=$($SigFile.FullName)" | Out-File -Append $env:GITHUB_OUTPUT
+            "sig=$($SigFile.FullName)" | Out-File -Append $env:GITHUB_OUTPUT
           }
           Write-Host "Found MSI: $($MsiFiles[0].Name)"
           Write-Host "Found NSIS: $($NsisFiles[0].Name)"
@@ -281,7 +281,7 @@ jobs:
 
           $ManifestPath = Join-Path "${{ github.workspace }}" "latest-beta.json"
           Set-Content -LiteralPath $ManifestPath -Value $ManifestJson -Encoding UTF8
-          Write-Host "manifest=$ManifestPath" | Out-File -Append $env:GITHUB_OUTPUT
+          "manifest=$ManifestPath" | Out-File -Append $env:GITHUB_OUTPUT
 
       # ---------------------------------------------------------------
       # 12. Commit updated manifest to repo (for raw.githubusercontent.com)
