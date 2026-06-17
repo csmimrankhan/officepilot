@@ -38,6 +38,9 @@ env:
   # repository path before running the workflow for the first time.
   TAURI_UPDATER_ENDPOINT: 'https://raw.githubusercontent.com/csmimrankhan/officepilot/main/releases/latest-beta.json'
 
+permissions:
+  contents: write
+
 jobs:
   test-and-build:
     name: Test & Build (Windows)
