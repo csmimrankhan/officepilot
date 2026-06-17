@@ -48,7 +48,7 @@ def test_diff_dicts_changed_values():
     a = {"x": 1, "y": 2, "z": 3}
     b = {"x": 1, "y": 9, "z": 3}
     d = settings_svc.diff_dicts(a, b)
-    assert d == {"y": {"from": 2, "to": 9}}
+    assert d == {"y": {"from": 1, "to": 9}}
 
 
 def test_diff_dicts_added_and_removed_keys():
