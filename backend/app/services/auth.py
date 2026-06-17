@@ -309,7 +309,7 @@ def register_user(db: Session, email: str, password: str, full_name: str = "") -
         raise ValueError("A user with this email already exists")
 
     if not full_name or not full_name.strip():
-        raise ValueError("Full name is required")
+        full_name = email.split("@")[0].replace(".", " ").title()
 
     if len(full_name.strip()) > 255:
         raise ValueError("Full name must be 255 characters or less")
