@@ -84,7 +84,10 @@ from app.models import accounting_skill  # noqa: E402,F401
 
 @pytest.fixture(scope="session", autouse=True)
 def _build_schema():
-    Base.metadata.create_all(bind=create_engine(os.environ["OFFICEPILOT_DB_URL"]))
+    from app.db import init_db
+    engine = create_engine(os.environ["OFFICEPILOT_DB_URL"])
+    Base.metadata.create_all(bind=engine)
+    init_db()
     yield
     shutil.rmtree(_TMP, ignore_errors=True)
 
