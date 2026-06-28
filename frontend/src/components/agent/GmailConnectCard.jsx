@@ -54,7 +54,14 @@ export default function GmailConnectCard({
         )}
         <div className="gmail-card-note">
           🔒 Read-only only. Uses <code>gmail.readonly</code> scope.
-          Separate from login access — no passwords requested.
+          {!isConnected && (
+            <span style={{ display: 'block', marginTop: 4 }}>
+              To connect your real Gmail: set <code>OFFICEPILOT_GMAIL_CLIENT_ID</code> and{' '}
+              <code>OFFICEPILOT_GMAIL_CLIENT_SECRET</code> in <code>backend/.env</code>,
+              then visit <strong>Integrations → Email</strong> page to authorize via Google OAuth.
+              Until then, mock emails are shown for preview.
+            </span>
+          )}
         </div>
       </div>
     </div>

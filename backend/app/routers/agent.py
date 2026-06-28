@@ -11,6 +11,7 @@ from ..db import get_db
 from ..models.user import User
 from ..routers.auth import get_current_user
 from ..services.agent_context import build_agent_context
+from ..services.agent_swarm import SwarmManager, list_agent_profiles
 from ..services.agent_memory import (
     add_run_step_logs,
     approve_plan,
@@ -348,6 +349,26 @@ def agent_status(
     return get_agent_status()
 
 
+@router.get("/llm-status")
+def llm_status():
+    import os
+    import urllib.request
+    import urllib.error
+
+    from ..config import get_settings
+    settings = get_settings()
+    base_url = os.environ.get("OLLAMA_BASE_URL", settings.ollama_base_url)
+    try:
+        url = f"{base_url.rstrip('/')}/api/tags"
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            models = [m.get("name", "") for m in data.get("models", [])]
+            return {"status": "connected", "models": models, "base_url": base_url}
+    except Exception as e:
+        return {"status": "offline", "error": str(e), "base_url": base_url}
+
+
 @router.post("/context")
 def agent_context(
     current_user: User = Depends(get_current_user),
@@ -372,6 +393,10 @@ def plan_task(
 
     force_new_plan = body.get("force_new_plan", False)
     plan = build_accountant_plan(db, command, current_user, force_new_plan=force_new_plan)
+
+    swarm = SwarmManager(db, current_user)
+    assigned_agent = swarm.classify_and_route(command)
+    plan["assigned_agent"] = assigned_agent
 
     # Navigation response — return early without creating plan/audit
     if plan.get("type") == "navigation":
@@ -481,6 +506,7 @@ def plan_task(
         "can_save_workflow": plan.get("can_save_workflow", False),
         "matched_workflow_id": plan.get("workflow_memory_id"),
         "matched_workflow_name": plan.get("workflow_name"),
+        "assigned_agent": plan.get("assigned_agent", "general"),
     }
 
 
@@ -563,7 +589,26 @@ def approve_plan_with_run(
         details=json.dumps({"command": plan.command_text[:200], "mode": mode, "run_id": run.id}),
     )
 
-    return {
+    # Phase 39: Background execution — auto-create BackgroundTask
+    background_task_id = None
+    if plan_data.get("run_in_background"):
+        from ..models.background_task import BackgroundTask
+        from ..services.background_runner import BackgroundTaskRunner
+
+        bt = BackgroundTask(
+            user_id=current_user.id,
+            command=plan.command_text or "",
+            plan_json=json.dumps({"steps": steps}),
+            status="queued",
+        )
+        db.add(bt)
+        db.commit()
+        db.refresh(bt)
+        background_task_id = bt.id
+        runner = BackgroundTaskRunner.get_instance()
+        runner.start_task(bt.id)
+
+    result = {
         "ok": True,
         "plan_id": plan_id,
         "run_id": run.id,
@@ -580,6 +625,10 @@ def approve_plan_with_run(
             for sl in step_logs
         ],
     }
+    if background_task_id is not None:
+        result["background_task_id"] = background_task_id
+
+    return result
 
 
 @router.post("/runs/{run_id}/execute-step")
@@ -1572,4 +1621,81 @@ def get_folder_invoice_run(
         "status": plan.status,
         "created_at": plan.created_at.isoformat() if plan.created_at else None,
         "plan_json": json.loads(plan.plan_json) if plan.plan_json else None,
+    }
+
+
+@router.post("/bank/parse")
+def bank_parse_feed(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from ..services.bank_reconciliation import BankFeedAdapter
+
+    content = body.get("content", "")
+    filename = body.get("filename", "feed.csv")
+    transactions = BankFeedAdapter().parse_feed_text(content, filename)
+
+    record_audit(
+        db=db,
+        action="agent.bank_parse_feed",
+        entity_type="bank_reconciliation",
+        entity_id=0,
+        actor=current_user.email,
+        details=json.dumps({"count": len(transactions)}),
+    )
+
+    return {
+        "ok": True,
+        "transactions": [
+            {"date": t.date, "description": t.description, "amount": t.amount, "type": t.txn_type}
+            for t in transactions
+        ],
+        "count": len(transactions),
+    }
+
+
+@router.post("/bank/reconcile")
+def bank_reconcile(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from ..services.agent_tool_executor import execute_tool, _data_dir
+
+    transactions = body.get("transactions", [])
+    if not transactions:
+        raise HTTPException(status_code=400, detail="No transactions provided.")
+
+    output_dir = _data_dir() / "exports" / "reconciliation"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = str(output_dir / f"reconciliation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
+
+    result = execute_tool(
+        "bank_reconcile_and_report",
+        {"transactions": transactions, "output_path": output_path},
+        "live",
+        db,
+        current_user,
+    )
+
+    record_audit(
+        db=db,
+        action="agent.bank_reconcile",
+        entity_type="bank_reconciliation",
+        entity_id=0,
+        actor=current_user.email,
+        details=json.dumps({"count": len(transactions), "status": result.get("status", "unknown")}),
+    )
+
+    if result.get("status") == "success":
+        return {
+            "ok": True,
+            "filepath": output_path,
+            "summary": result.get("output", {}).get("summary", {}),
+        }
+    return {
+        "ok": False,
+        "status": result.get("status", "failed"),
+        "error": result.get("error_message", "Reconciliation failed."),
     }

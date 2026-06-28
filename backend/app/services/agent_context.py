@@ -35,7 +35,7 @@ def build_agent_context(db: Session, current_user: User | None = None) -> dict:
 
     context = {
         "app_name": "OfficePilot AI",
-        "app_version": "0.36.1",
+        "app_version": "1.0.0",
         "phase": 23,
         "demo_mode": settings.demo_mode,
         "agent_provider": settings.agent_provider,

@@ -263,7 +263,7 @@ class TestLandingPage:
         resp = client.get("/api/health")
         assert resp.status_code == 200
         assert resp.json()["phase"] == 23
-        assert resp.json()["version"] == "0.36.1"
+        assert resp.json()["version"] == "1.0.0"
 
     def test_faq_page_renders(self, client: TestClient):
         # Verify that the frontend would receive valid data

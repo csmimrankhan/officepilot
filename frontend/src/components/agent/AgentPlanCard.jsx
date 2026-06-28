@@ -1,3 +1,11 @@
+const COM_TOOL_NAMES = new Set([
+  'excel_create_pivot_table',
+  'excel_switch_workbooks',
+  'excel_advanced_formatting',
+  'excel_calculate_and_read',
+  'excel_create_chart',
+])
+
 export default function AgentPlanCard({ plan }) {
   if (!plan || !plan.plan) return null
 
@@ -7,6 +15,7 @@ export default function AgentPlanCard({ plan }) {
   const steps = p.steps || []
   const isBlocked = !!p.blocked_reason
   const needsClarification = !!p.clarification_needed
+  const hasComOps = steps.some(s => COM_TOOL_NAMES.has(s.step_type))
 
   return (
     <div className="card" style={{ padding: '12px', background: '#181825', borderRadius: '12px' }}>
@@ -22,6 +31,7 @@ export default function AgentPlanCard({ plan }) {
         .agent-plan-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; margin-left: 4px; }
         .agent-plan-badge.ru { background: #45475a; color: #89b4fa; }
         .agent-plan-badge.wf { background: #45475a; color: #a6e3a1; }
+        .agent-plan-badge.com { background: #1e3a5f; color: #74c7ec; }
       `}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -39,6 +49,7 @@ export default function AgentPlanCard({ plan }) {
         )}
         {p.can_save_workflow && <span className="agent-plan-badge wf">Saves as workflow</span>}
         {plan.matched_workflow_name && <span className="agent-plan-badge wf">Matched: {plan.matched_workflow_name}</span>}
+        {hasComOps && <span className="agent-plan-badge com">Advanced Excel</span>}
       </div>
 
       {isBlocked && (

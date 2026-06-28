@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../api.js'
+import BackgroundTaskWidget from '../agent/BackgroundTaskWidget.jsx'
 
 export default function TopBar({ user, onLogout, onFeedback, onBugReport, onMenuToggle }) {
   const [agentOnline, setAgentOnline] = useState(null)
   const [killSwitch, setKillSwitch] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
+  const [liveExcelMode, setLiveExcelMode] = useState(false)
 
   useEffect(() => {
     const check = async () => {
@@ -42,6 +44,23 @@ export default function TopBar({ user, onLogout, onFeedback, onBugReport, onMenu
         )}
       </div>
       <div className="topbar-right">
+        <div className="live-excel-toggle-wrapper" title={liveExcelMode ? 'Live Excel Mode active — voice commands will directly edit your open file. Press Ctrl+Z to undo.' : 'Click to enable Live Excel Mode'}>
+          <button
+            className={`live-excel-toggle ${liveExcelMode ? 'live-excel-toggle--active' : ''}`}
+            onClick={() => setLiveExcelMode(!liveExcelMode)}
+            type="button"
+            aria-label={liveExcelMode ? 'Disable Live Excel Mode' : 'Enable Live Excel Mode'}
+            aria-pressed={liveExcelMode}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+              <path d="M13 13l6 6" />
+            </svg>
+            <span className="live-excel-label">Live Excel</span>
+            {liveExcelMode && <span className="live-excel-dot" />}
+          </button>
+        </div>
+        <BackgroundTaskWidget />
         <button className="btn btn--danger btn--sm topbar-emergency" onClick={async () => {
           try { await api.setKillSwitch?.({ active: true }) } catch {}
         }} type="button">Emergency Stop</button>

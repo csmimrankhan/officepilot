@@ -20,7 +20,7 @@ def test_local_status_includes_runtime_fields(client: TestClient):
     assert r.status_code == 200
     body = r.json()
     assert body["app"] == "officepilot-ai"
-    assert body["version"] == "0.36.1"
+    assert body["version"] == "1.0.0"
     assert body["phase"] == 12
     # Runtime fields
     assert "started_at" in body

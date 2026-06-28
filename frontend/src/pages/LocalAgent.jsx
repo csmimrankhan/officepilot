@@ -79,6 +79,8 @@ export default function LocalAgent() {
   const [logs, setLogs] = useState(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [exportingLogs, setExportingLogs] = useState(false)
+  const [llmStatus, setLlmStatus] = useState(null)
+  const [llmLoading, setLlmLoading] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -97,6 +99,20 @@ export default function LocalAgent() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const loadLlmStatus = useCallback(async () => {
+    setLlmLoading(true)
+    try {
+      const res = await api.llmStatus()
+      setLlmStatus(res)
+    } catch {
+      setLlmStatus({ status: 'offline' })
+    } finally {
+      setLlmLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadLlmStatus() }, [loadLlmStatus])
 
   // Periodic health check (every 10s) so the user sees the dot
   // change colour if the backend goes away.
@@ -566,6 +582,37 @@ export default function LocalAgent() {
       <pre className="json-block">
         {JSON.stringify(health || { probing: true }, null, 2)}
       </pre>
+
+      <h3>Local AI Brain</h3>
+      <p className="subtle">
+        Connection status for the local LLM provider (Ollama).
+      </p>
+      <div className="run-summary">
+        <div>
+          <div className="subtle">Status</div>
+          <div>
+            {llmLoading ? (
+              <span className="subtle">Checking…</span>
+            ) : llmStatus && llmStatus.status === 'connected' ? (
+              <StatusPill ok={true} label="Connected" kind="ok" />
+            ) : (
+              <StatusPill ok={false} label="Offline" kind="bad" />
+            )}
+          </div>
+        </div>
+        <div>
+          <div className="subtle">Base URL</div>
+          <code className="mono">{llmStatus ? llmStatus.base_url || '—' : '—'}</code>
+        </div>
+        <div>
+          <div className="subtle">Models found</div>
+          <div>
+            {llmStatus && llmStatus.models && llmStatus.models.length > 0
+              ? llmStatus.models.join(', ')
+              : llmLoading ? '…' : 'none'}
+          </div>
+        </div>
+      </div>
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </div>

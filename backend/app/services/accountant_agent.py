@@ -12,6 +12,8 @@ from ..config import get_settings
 
 logger = logging.getLogger("officepilot.accountant_agent")
 
+OLLAMA_DEFAULT_MODEL = "llama3.1"
+
 SENSITIVE_PATTERNS = re.compile(
     r"(password|secret|token|api_key|2fa|otp|cvv|ssn|pin|banking|login|credential)",
     re.IGNORECASE,
@@ -21,6 +23,25 @@ BLOCKED_PAYMENT_PATTERNS = re.compile(
     r"(pay|payment|bank.transfer|delete.*record|password.*entry|security.*setting"
     r"|tax.*filing.*submit|payroll.*submit|irreversible.*submit|submit.*payment"
     r"|make.*payment|send.*money|wire.*transfer|ach.*transfer)",
+    re.IGNORECASE,
+)
+
+BACKGROUND_PATTERNS = re.compile(
+    r"(in\s+the\s+background|run\s+in\s+background|while\s+I\s+work"
+    r"|automatically|fire\s+and\s+forget|do\s+it\s+silently"
+    r"|in\s+background|background\s+mode|run\s+silently"
+    r"|don't.*wait|no.*need.*to.*wait|just.*do.*it"
+    r"|without.*asking|no.*approval|skip.*approval)",
+    re.IGNORECASE,
+)
+
+DRIVE_READONLY_BLOCKED_PATTERNS = re.compile(
+    r"(upload.*drive|upload.*google.*drive|delete.*drive|delete.*google.*drive"
+    r"|move.*drive.*file|rename.*drive.*file|copy.*drive.*file"
+    r"|create.*folder.*drive|trash.*drive|empty.*drive.*trash"
+    r"|drive.*upload|drive.*delete|drive.*move|drive.*rename"
+    r"|google.*drive.*upload|google.*drive.*delete|google.*drive.*move"
+    r"|sync.*drive.*to|backup.*drive|drive.*backup)",
     re.IGNORECASE,
 )
 
@@ -67,10 +88,17 @@ def get_agent_status() -> dict:
     api_key = os.environ.get("AGENT_API_KEY", "")
     allow_cloud = os.environ.get("AGENT_ALLOW_CLOUD", "false").lower() in ("1", "true", "yes", "on")
     local_endpoint = os.environ.get("LOCAL_LLM_ENDPOINT", settings.local_llm_endpoint)
+    ollama_base = os.environ.get("OLLAMA_BASE_URL", settings.ollama_base_url)
+    ollama_model = os.environ.get("OLLAMA_MODEL", settings.ollama_model)
 
     status: str
     if provider == "mock":
         status = "mock"
+    elif provider == "ollama":
+        if _check_local_llm_reachable(ollama_base):
+            status = "connected"
+        else:
+            status = "ollama_unreachable"
     elif provider == "local":
         if _check_local_llm_reachable(local_endpoint):
             status = "connected"
@@ -89,9 +117,11 @@ def get_agent_status() -> dict:
         "provider": provider,
         "status": status,
         "allow_cloud": allow_cloud,
-        "model": os.environ.get("AGENT_MODEL", ""),
+        "model": ollama_model if provider == "ollama" else os.environ.get("AGENT_MODEL", ""),
         "api_base_url": os.environ.get("AGENT_API_BASE_URL", ""),
         "local_llm_endpoint": local_endpoint if provider == "local" else "",
+        "ollama_base_url": ollama_base if provider == "ollama" else "",
+        "ollama_model": ollama_model if provider == "ollama" else "",
         "dry_run_default": os.environ.get("AGENT_DRY_RUN_DEFAULT", "true").lower() in ("1", "true", "yes", "on"),
         "timeout_seconds": int(os.environ.get("AGENT_TIMEOUT_SECONDS", "60")),
         "max_steps": int(os.environ.get("AGENT_MAX_STEPS", "20")),
@@ -119,6 +149,9 @@ def classify_task_risk(command: str, context: dict | None = None) -> dict:
         if kw in cmd_lower:
             return {"risk_level": "blocked", "requires_approval": False, "reason": f"Command contains blocked keyword: '{kw}'"}
 
+    if DRIVE_READONLY_BLOCKED_PATTERNS.search(cmd_lower):
+        return {"risk_level": "blocked", "requires_approval": False, "reason": "drive_write_not_supported", "message": "OfficePilot Google Drive integration is read-only. Uploading, deleting, moving, or renaming Drive files is not supported."}
+
     if BLOCKED_EMAIL_PATTERNS.search(cmd_lower):
         return {"risk_level": "blocked", "requires_approval": False, "reason": "email_write_not_supported", "message": "OfficePilot Gmail automation is read-only. Sending, forwarding, deleting, moving, or marking emails is not supported."}
 
@@ -143,13 +176,117 @@ def classify_task_risk(command: str, context: dict | None = None) -> dict:
     return {"risk_level": "low", "requires_approval": True, "reason": "Command accepted — requires review."}
 
 
-def call_agent_provider(prompt: str, redacted_context: dict | None = None) -> str:
+def _build_ollama_system_prompt(db=None, user_id: int | None = None, allowed_tools: list[str] | None = None) -> str:
+    from .tool_registry import TOOL_REGISTRY
+
+    tools_to_show = [t for t in TOOL_REGISTRY if allowed_tools is None or t.name in allowed_tools]
+    tools_section = "\n".join(
+        f"  - {t.name}: {t.description} (risk: {t.risk_level}, requires_approval: {t.approval_required})"
+        for t in tools_to_show
+    )
+
+    correction_rules_section = ""
+    if db is not None and user_id is not None:
+        try:
+            from .learning_loop import format_rules_for_prompt, get_active_rules
+
+            rules = get_active_rules(db=db, user_id=user_id)
+            formatted = format_rules_for_prompt(rules)
+            if formatted:
+                correction_rules_section = f"\n\n{formatted}"
+        except Exception:
+            logger.exception("Failed to load correction rules for system prompt")
+            pass
+
+    base_prompt = (
+        "You are OfficePilot AI. You are a strict JSON-only task planner for accounting automation. "
+        "Output ONLY a valid JSON object. Do NOT include markdown, code fences, explanations, or any text outside the JSON.\n\n"
+        "Available tools:\n"
+        f"{tools_section}\n\n"
+        "Rules:\n"
+        "1. Respond ONLY with a JSON object containing a 'steps' array. Each step must have 'tool' (the tool name from above) and 'params' (object with parameter keys).\n"
+        "2. Include 'task_title', 'task_summary', 'platform_detected', 'risk_level' ('low'|'medium'|'high'|'blocked'), 'requires_approval' (bool), 'can_record_workflow' (bool), 'blocked_reason' (str|null), 'clarification_needed' (bool), 'clarification_question' (str|null) at the top level.\n"
+        "3. NEVER include passwords, API keys, tokens, secrets, or credentials.\n"
+        "4. NEVER plan payments, bank transfers, tax filing, password entry, or security changes.\n"
+        "5. If blocked, set risk_level='blocked' and provide blocked_reason.\n"
+        "6. If unclear, set clarification_needed=true and provide a specific clarification_question.\n"
+        "7. The user's command may be in English, Urdu/Roman Urdu, Hindi, French, Spanish, German, or other languages. Understand it and plan using only the tools listed above.\n"
+        "8. Only use tool names from the list above. Do not invent tools.\n"
+        "9. Each step must have: 'step_order' (int), 'step_type' (tool name), 'tool' (same), 'target' (str), 'instruction' (str), 'expected_result' (str), 'requires_approval' (bool), 'risk_level' (str).\n\n"
+        'Output format: {"task_title": "...", "task_summary": "...", "platform_detected": "...", '
+        '"risk_level": "low|medium|high|blocked", "requires_approval": true|false, '
+        '"can_record_workflow": true|false, '
+        '"steps": [{"step_order": 1, "step_type": "...", "tool": "...", "target": "...", '
+        '"instruction": "...", "expected_result": "...", "requires_approval": true|false, '
+        '"risk_level": "low|medium|high"}], '
+        '"blocked_reason": null|"...", "clarification_needed": true|false, '
+        '"clarification_question": null|"..."}'
+    ) + correction_rules_section
+
+    return base_prompt
+
+
+def _call_ollama_provider(prompt: str, context: dict | None = None, db=None, user_id: int | None = None, allowed_tools: list[str] | None = None) -> str:
+    """Send prompt to Ollama using /api/generate with format: 'json'."""
+    import urllib.request
+    import urllib.error
+
+    settings = get_settings()
+    base_url = os.environ.get("OLLAMA_BASE_URL", settings.ollama_base_url)
+    model = os.environ.get("OLLAMA_MODEL", settings.ollama_model)
+    timeout = int(os.environ.get("AGENT_TIMEOUT_SECONDS", "120"))
+
+    system_prompt = _build_ollama_system_prompt(db=db, user_id=user_id, allowed_tools=allowed_tools)
+
+    full_prompt = (
+        f"{system_prompt}\n\n"
+        f"User command: {prompt}\n"
+        f"Context: {json.dumps(context or {})}\n\n"
+        "Respond ONLY with the JSON object."
+    )
+
+    payload = json.dumps({
+        "model": model,
+        "prompt": full_prompt,
+        "format": "json",
+        "stream": False,
+        "temperature": 0.1,
+    }).encode("utf-8")
+
+    headers = {"Content-Type": "application/json"}
+    url = f"{base_url.rstrip('/')}/api/generate"
+
+    try:
+        req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            content = data.get("response", "").strip()
+            if not content:
+                raise ValueError("Empty response from Ollama")
+            return content
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        logger.error("Ollama HTTP %s: %s", e.code, body)
+        raise ConnectionError(f"Ollama returned HTTP {e.code}: {body}")
+    except urllib.error.URLError as e:
+        logger.error("Ollama URL error: %s", e.reason)
+        raise ConnectionError(f"Ollama unreachable: {e.reason}")
+
+
+def call_agent_provider(prompt: str, redacted_context: dict | None = None, db=None, user_id: int | None = None, allowed_tools: list[str] | None = None) -> str:
     settings = get_settings()
     provider = os.environ.get("AGENT_PROVIDER", "mock")
     allow_cloud = os.environ.get("AGENT_ALLOW_CLOUD", "false").lower() in ("1", "true", "yes", "on")
 
     if provider == "mock":
         return _mock_agent_response(prompt, redacted_context)
+
+    if provider == "ollama":
+        try:
+            return _call_ollama_provider(prompt, redacted_context, db=db, user_id=user_id, allowed_tools=allowed_tools)
+        except (ConnectionError, ValueError) as e:
+            logger.warning("Ollama call failed, falling back to mock: %s", e)
+            return _fallback_mock_response(prompt, redacted_context, str(e))
 
     if provider == "local":
         try:
@@ -209,6 +346,28 @@ def _mock_agent_response(prompt: str, context: dict | None = None) -> str:
     from .language_utils import detect_language_simple
     detected_lang = detect_language_simple(cmd_lower)
 
+    # Phase 39: Google Drive chain — check before email/Excel intents
+    if ("drive" in cmd_lower or "google drive" in cmd_lower) and (
+        "download" in cmd_lower or "list" in cmd_lower or "get" in cmd_lower
+    ) and any(w in cmd_lower for w in ["invoice", "excel", "summary", "analytics", "analyze", "report"]):
+        platform = _detect_platform(cmd_lower)
+        steps = _build_mock_steps(cmd_lower, platform)
+        can_record = any(kw in cmd_lower for kw in ["record", "remember", "save"])
+        run_in_bg = bool(BACKGROUND_PATTERNS.search(cmd_lower))
+        return json.dumps({
+            "task_title": _extract_title(cmd_lower),
+            "task_summary": f"Task: {prompt[:200]}",
+            "platform_detected": "Google Drive",
+            "risk_level": "low",
+            "requires_approval": True,
+            "can_record_workflow": can_record,
+            "run_in_background": run_in_bg,
+            "steps": steps,
+            "blocked_reason": None,
+            "clarification_needed": False,
+            "clarification_question": None,
+        })
+
     # Multi-language Excel Downloads Summary intent (mock provider handles keyword-based detection)
     # English keywords
     en_matches = (("download" in cmd_lower or "downloads" in cmd_lower) and
@@ -249,14 +408,21 @@ def _mock_agent_response(prompt: str, context: dict | None = None) -> str:
         })
 
     # Multi-language Email Attachment Download intent
-    # English
+    # English (with explicit email mention)
     email_en = (("download" in cmd_lower or "search" in cmd_lower) and
         ("email" in cmd_lower or "gmail" in cmd_lower or "mail" in cmd_lower) and
         ("attachment" in cmd_lower or "invoice" in cmd_lower or "receipt" in cmd_lower or "bill" in cmd_lower or "report" in cmd_lower))
-    # Roman Urdu / Hinglish
+    # English (implicit — "download invoice attachments" without saying "email")
+    email_implicit = (("download" in cmd_lower or "search" in cmd_lower) and
+        ("attachment" in cmd_lower or "attachments" in cmd_lower))
+    # Roman Urdu / Hinglish (explicit email mention)
     email_ur = (("download" in cmd_lower or "search" in cmd_lower) and
         ("email" in cmd_lower or "gmail" in cmd_lower or "mail" in cmd_lower) and
         any(w in cmd_lower for w in ["sa", "se", "sy", "mein", "me", "ka", "ki", "wali"]))
+    # Roman Urdu invoice download (e.g., "aaj ki invoices download karo", "invoice download karo")
+    email_ur_invoice = (("download" in cmd_lower or "karo" in cmd_lower) and
+        ("invoice" in cmd_lower or "invoices" in cmd_lower) and
+        any(w in cmd_lower for w in ["ki", "ka", "ke", "karo", "do", "nikalo"]))
     # Generic email download (e.g., "email download karo", "gmail sa download karo", "invoice email download karo")
     email_generic = (("email" in cmd_lower or "gmail" in cmd_lower) and
         ("download" in cmd_lower or "karo" in cmd_lower))
@@ -268,8 +434,9 @@ def _mock_agent_response(prompt: str, context: dict | None = None) -> str:
     email_es = (("descargar" in cmd_lower or "buscar" in cmd_lower) and
         ("email" in cmd_lower or "correo" in cmd_lower or "gmail" in cmd_lower) and
         ("adjunto" in cmd_lower or "factura" in cmd_lower or "attachment" in cmd_lower))
+    email_match = email_en or email_implicit or email_ur or email_ur_invoice or email_generic or email_fr or email_es
 
-    if email_en or email_ur or email_generic or email_fr or email_es:
+    if email_match:
         from .accountant_autopilot import _build_email_download_plan
         email_cmd = cmd_lower.split("user command:")[-1].split("\n\ncontext:")[0].strip()
         query = email_cmd.replace("email", "").replace("gmail", "").replace("download", "").replace("karo", "").replace("sa", "").replace("se", "").replace("sy", "").strip()
@@ -295,6 +462,8 @@ def _mock_agent_response(prompt: str, context: dict | None = None) -> str:
     platform = _detect_platform(cmd_lower)
     steps = _build_mock_steps(cmd_lower, platform)
 
+    run_in_background = bool(BACKGROUND_PATTERNS.search(cmd_lower))
+
     return json.dumps({
         "task_title": _extract_title(cmd_lower),
         "task_summary": f"Task: {prompt[:200]}",
@@ -302,6 +471,7 @@ def _mock_agent_response(prompt: str, context: dict | None = None) -> str:
         "risk_level": risk["risk_level"],
         "requires_approval": risk["requires_approval"],
         "can_record_workflow": can_record,
+        "run_in_background": run_in_background,
         "steps": steps,
         "blocked_reason": risk.get("reason") if risk["risk_level"] == "blocked" else None,
         "clarification_needed": False,
@@ -452,9 +622,42 @@ def build_hero_demo_plan() -> dict:
 def _build_mock_steps(cmd_lower: str, platform: str) -> list[dict]:
     steps = []
 
+    # Phase 39: Google Drive + Excel + Analytics chain
+    if ("drive" in cmd_lower or "google drive" in cmd_lower) and (
+        "download" in cmd_lower or "list" in cmd_lower or "get" in cmd_lower
+    ) and any(w in cmd_lower for w in ["invoice", "excel", "summary", "analytics", "analyze", "report"]):
+        steps = [
+            {"step_order": 1, "step_type": "drive_list_recent_files", "tool": "drive_list_recent_files", "target": "drive",
+             "instruction": "List recent files from Google Drive matching the requested criteria.",
+             "parameters": {"days_back": 7, "keywords": ["invoice"]},
+             "expected_result": "List of matching Drive files found.",
+             "requires_approval": False, "risk_level": "low"},
+            {"step_order": 2, "step_type": "drive_download_file", "tool": "drive_download_file", "target": "drive",
+             "instruction": "Download each matching file from Drive to local storage.",
+             "parameters": {"file_id": "{file_id_1}"},
+             "expected_result": "File downloaded to local drive_downloads folder.",
+             "requires_approval": False, "risk_level": "low"},
+            {"step_order": 3, "step_type": "drive_download_file", "tool": "drive_download_file", "target": "drive",
+             "instruction": "Download second matching file from Drive.",
+             "parameters": {"file_id": "{file_id_2}"},
+             "expected_result": "File downloaded to local drive_downloads folder.",
+             "requires_approval": False, "risk_level": "low"},
+            {"step_order": 4, "step_type": "analyze_invoice_dataset", "tool": "analyze_invoice_dataset", "target": "analytics",
+             "instruction": "Analyze extracted invoice data and calculate aggregate statistics.",
+             "parameters": {"invoices_data": "{extracted_invoices}"},
+             "expected_result": "Invoice analytics computed: total sum, count, average, min/max.",
+             "requires_approval": False, "risk_level": "low"},
+            {"step_order": 5, "step_type": "excel_create_summary_from_file", "tool": "excel_create_summary_from_file", "target": "Excel",
+             "instruction": "Create Excel summary report from the analyzed invoice data.",
+             "parameters": {"file_path": "{output_path}"},
+             "expected_result": "Excel summary report created with invoice analytics.",
+             "requires_approval": True, "risk_level": "medium"},
+        ]
+        return steps
+
     if ("invoice" in cmd_lower or "invoices" in cmd_lower) and (
         "download" in cmd_lower or "email" in cmd_lower
-    ) and ("excel" in cmd_lower or "save" in cmd_lower or "total" in cmd_lower):
+    ) and ("excel" in cmd_lower or "save" in cmd_lower or "total" in cmd_lower or "attachment" in cmd_lower or "attachments" in cmd_lower):
         return build_hero_demo_plan().get("steps", [])
 
     if "read" in cmd_lower and "screen" in cmd_lower:
@@ -831,7 +1034,7 @@ def convert_plan_to_workflow_steps(plan: dict) -> list[dict]:
     ]
 
 
-def build_task_plan(command: str, context: dict | None = None) -> dict:
+def build_task_plan(command: str, context: dict | None = None, db=None, user=None, agent_profile: dict | None = None) -> dict:
     risk = classify_task_risk(command, context)
 
     if risk["risk_level"] == "blocked":
@@ -851,8 +1054,15 @@ def build_task_plan(command: str, context: dict | None = None) -> dict:
     redacted_ctx = redact_context(context or {})
     prompt = f"User command: {command}\n\nContext: {json.dumps(redacted_ctx)}"
 
+    if agent_profile:
+        additions = agent_profile.get("system_prompt_additions", "")
+        if additions:
+            prompt = f"{additions}\n\n{prompt}"
+
+    user_id = user.id if user is not None else None
+
     try:
-        raw_response = call_agent_provider(prompt, redacted_ctx)
+        raw_response = call_agent_provider(prompt, redacted_ctx, db=db, user_id=user_id, allowed_tools=agent_profile.get("allowed_tools") if agent_profile else None)
     except ValueError as e:
         return {
             "task_title": "Provider Error",
@@ -887,5 +1097,9 @@ def build_task_plan(command: str, context: dict | None = None) -> dict:
     if validation.get("clarification_needed"):
         plan["clarification_needed"] = True
         plan["clarification_question"] = validation.get("question")
+
+    # Phase 39: Background intent detection
+    if BACKGROUND_PATTERNS.search(command):
+        plan["run_in_background"] = True
 
     return plan

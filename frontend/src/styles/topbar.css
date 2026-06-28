@@ -1,3 +1,4 @@
+/* ===================================================================
    TOP BAR
    =================================================================== */
 
@@ -93,4 +94,58 @@
   text-transform: uppercase;
 }
 
+/* ── Live Excel Mode Toggle ─────────────────────────────────────── */
+
+.live-excel-toggle-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.live-excel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.live-excel-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.live-excel-toggle--active {
+  border-color: var(--danger);
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger);
+}
+
+.live-excel-label {
+  font-weight: 500;
+}
+
+.live-excel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: live-excel-pulse 1s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes live-excel-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+  50% { opacity: 0.7; box-shadow: 0 0 6px 3px rgba(220, 38, 38, 0.3); }
+}
+
 /* ===================================================================
+   (continued in components.css)
+   =================================================================== */

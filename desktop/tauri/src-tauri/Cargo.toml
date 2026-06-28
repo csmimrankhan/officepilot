@@ -1,6 +1,6 @@
 [package]
 name = "officepilot-desktop"
-version = "0.36.1"
+version = "1.0.0"
 description = "Local-first Windows desktop shell for OfficePilot AI"
 authors = ["OfficePilot"]
 edition = "2021"

@@ -19,6 +19,7 @@ import GmailConnectCard from '../components/agent/GmailConnectCard.jsx'
 import EmailSearchPreviewCard from '../components/agent/EmailSearchPreviewCard.jsx'
 import AttachmentDownloadCard from '../components/agent/AttachmentDownloadCard.jsx'
 import EmailDownloadResultCard from '../components/agent/EmailDownloadResultCard.jsx'
+import BackgroundResultCard from '../components/agent/BackgroundResultCard.jsx'
 
 const SUGGESTED_COMMANDS = [
   'Read this screen',
@@ -159,6 +160,12 @@ export default function AccountantAgent() {
   const [emailGmailConnected, setEmailGmailConnected] = useState(false)
   const [emailGmailAccount, setEmailGmailAccount] = useState(null)
   const [emailPendingStepLogId, setEmailPendingStepLogId] = useState(null)
+  const [emailError, setEmailError] = useState('')
+
+  // ── Background Tasks (Phase 39) ─────────────────────────────────
+  const [backgroundTaskId, setBackgroundTaskId] = useState(null)
+  const [completedBackgroundTasks, setCompletedBackgroundTasks] = useState([])
+  const [backgroundPollInterval, setBackgroundPollInterval] = useState(null)
 
   const [messages, setMessages] = useState([])
   const [currentStep, setCurrentStep] = useState(initialState ? 1 : 0)
@@ -365,12 +372,18 @@ export default function AccountantAgent() {
   const load = async () => {
     setLoading(true); setError(null)
     try {
-      const [status, ctx, wfs] = await Promise.all([
+      const [status, ctx, wfs, bgTasks] = await Promise.all([
         api.agentStatus().catch(() => ({ provider: 'mock', status: 'unknown' })),
         api.agentContext().catch(() => ({ context: {} })),
         api.listAgentWorkflows().catch(() => ({ workflows: [] })),
+        api.getBackgroundTasks().catch(() => []),
       ])
       setAgentStatus(status); setContext(ctx.context || {}); setWorkflows(wfs.workflows || [])
+      const btList = Array.isArray(bgTasks) ? bgTasks : (bgTasks?.tasks || [])
+      const recentDone = btList.filter(t => t.status === 'completed' || t.status === 'failed')
+      if (recentDone.length > 0) {
+        setCompletedBackgroundTasks(recentDone)
+      }
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }
   }
@@ -588,14 +601,52 @@ export default function AccountantAgent() {
       setError('Please select at least one message')
       return
     }
-    setEmailLoading(true)
     setEmailSelectedIds(selectedIds)
+    setEmailError('')
     setEmailStepState('awaiting_folder')
-    setEmailLoading(false)
-  }, [])
+    if (!runId || runSteps.length === 0) return
+    try {
+      setEmailLoading(true)
+      const pendingStep = runSteps.find(s => s.status === 'pending')
+      if (pendingStep) {
+        const result = await api.executeRunStep(runId, { step_log_id: pendingStep.step_log_id })
+        const updated = [...runSteps]
+        const idx = updated.findIndex(s => s.step_log_id === result.step_log_id)
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], status: result.step_status }
+          setRunSteps(updated)
+          setCurrentStepIndex(idx)
+        }
+        setRunResults(prev => [...prev, result])
+      }
+      const nextPending = runSteps.find(s => s.status === 'pending')
+      if (nextPending) {
+        const stepResult = await api.executeRunStep(runId, { step_log_id: nextPending.step_log_id })
+        const stepOutput = stepResult.result?.output || {}
+        if (stepOutput.needs_input && (stepOutput.field === 'output_folder' || stepOutput.field_type === 'folder_picker')) {
+          setEmailPendingStepLogId(stepResult.step_log_id)
+          setEmailStepState('needs_folder')
+        }
+        const stepIdx = runSteps.findIndex(s => s.step_log_id === stepResult.step_log_id)
+        if (stepIdx >= 0) {
+          const updatedSteps = [...runSteps]
+          updatedSteps[stepIdx] = { ...updatedSteps[stepIdx], status: stepResult.step_status }
+          setRunSteps(updatedSteps)
+          setCurrentStepIndex(stepIdx)
+        }
+        setRunResults(prev => [...prev, stepResult])
+      }
+    } catch (err) {
+      setEmailError(err.message)
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}`, time: formatTime(), isError: true }])
+    } finally {
+      setEmailLoading(false)
+    }
+  }, [runId, runSteps])
 
   const handleEmailDownloadWithFolder = useCallback(async (messageIds, folder) => {
     setEmailLoading(true)
+    setEmailError('')
     try {
       if (runId && emailPendingStepLogId) {
         const result = await api.executeRunStep(runId, {
@@ -621,6 +672,10 @@ export default function AccountantAgent() {
           if (result.message) {
             setMessages(prev => [...prev, { role: 'assistant', content: result.message, time: formatTime() }])
           }
+        } else {
+          const msg = stepOutput.error_message || result.message || 'Download did not complete'
+          setEmailError(msg)
+          setMessages(prev => [...prev, { role: 'assistant', content: `Download failed: ${msg}`, time: formatTime(), isError: true }])
         }
       } else {
         const res = await api.emailBatchDownload({
@@ -628,19 +683,23 @@ export default function AccountantAgent() {
           message_ids: messageIds,
           output_folder: folder,
         })
-        setEmailDownloads(res.downloads || [])
-        setEmailDownloadFolder(res.output_folder || folder)
-        setEmailStepState('download_success')
-        if (res.total_downloaded > 0) {
+        if (res.status === 'success' || res.total_downloaded > 0) {
+          setEmailDownloads(res.downloads || [])
+          setEmailDownloadFolder(res.output_folder || folder)
+          setEmailStepState('download_success')
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: `Downloaded ${res.total_downloaded} attachment(s) to ${res.output_folder || folder}`,
             time: formatTime(),
           }])
+        } else {
+          setEmailError(res.message || 'No attachments downloaded')
+          setMessages(prev => [...prev, { role: 'assistant', content: `Download result: ${res.message || 'No attachments downloaded'}`, time: formatTime() }])
         }
       }
     } catch (err) {
-      setError(err.message)
+      setEmailError(err.message)
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}`, time: formatTime(), isError: true }])
     } finally {
       setEmailLoading(false)
     }
@@ -653,6 +712,7 @@ export default function AccountantAgent() {
     setEmailDownloads([])
     setEmailDownloadFolder('')
     setEmailPendingStepLogId(null)
+    setEmailError('')
   }, [])
 
   const handleCreateExcelSummaryFromAttachment = useCallback(() => {
@@ -745,6 +805,17 @@ export default function AccountantAgent() {
     setExecuting(true); setError(null); setExcelVerify(null)
     try {
       const result = await api.approveAgentPlan(planId, { mode })
+      if (result.background_task_id) {
+        setBackgroundTaskId(result.background_task_id)
+        setPlan(null); setPlanId(null)
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Task started in background. You can keep working! (Task #${result.background_task_id})`,
+          time: formatTime(),
+        }])
+        setCommand('')
+        return
+      }
       setRunId(result.run_id); setRunMode(result.mode); setRunStatus(result.status)
       setRunSteps(result.steps || []); setCurrentStepIndex(-1); setRunResults([])
       setPlan({ ...plan, requires_approval: false })
@@ -1057,6 +1128,32 @@ export default function AccountantAgent() {
     if (runStatus === 'completed') handleLoadSummary()
   }, [runStatus])
 
+  // Poll background task completion
+  useEffect(() => {
+    if (!backgroundTaskId) return
+    const interval = setInterval(async () => {
+      try {
+        const task = await api.getBackgroundTasks({ id: backgroundTaskId })
+        const tasks = Array.isArray(task) ? task : task?.tasks || []
+        const found = tasks.find(t => t.id === backgroundTaskId) || task
+        if (!found || found.id !== backgroundTaskId) return
+        if (found.status === 'completed' || found.status === 'failed') {
+          clearInterval(interval)
+          setCompletedBackgroundTasks(prev => [...prev, found])
+          setBackgroundTaskId(null)
+          if (found.status === 'completed') {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `Background task completed! ${found.command || ''}`,
+              time: formatTime(),
+            }])
+          }
+        }
+      } catch { /* ignore */ }
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [backgroundTaskId])
+
   const handleRepeatWorkflow = async (workflowId) => {
     setRepeatLoading(true); setError(null); setRepeatResult(null)
     try {
@@ -1279,6 +1376,13 @@ export default function AccountantAgent() {
                   <div className="agent-plan-actions">
                     {plan.requires_approval !== false && (
                       <>
+                        {plan.steps && plan.steps.some(s =>
+                          ['excel_create_pivot_table', 'excel_switch_workbooks', 'excel_advanced_formatting', 'excel_calculate_and_read', 'excel_create_chart'].includes(s.step_type)
+                        ) && (
+                          <div className="alert info" style={{ fontSize: '12px', marginBottom: '8px', padding: '6px 10px', background: '#1e3a5f22', border: '1px solid #74c7ec44', borderRadius: 6, color: '#74c7ec' }}>
+                            This will run advanced Excel operations via COM automation. This may take a few moments.
+                          </div>
+                        )}
                         <button className="btn btn--primary" onClick={() => handleApprovePlan('dry_run')} disabled={executing || context?.kill_switch_active}>
                           {executing ? 'Approving...' : 'Approve & Dry-Run'}
                         </button>
@@ -1625,6 +1729,28 @@ export default function AccountantAgent() {
           </div>
         )}
 
+        {/* Background Task Results (Phase 39) */}
+        {completedBackgroundTasks.map(bt => (
+          <div key={bt.id} className="agent-chat-msg agent-chat-msg--assistant">
+            <div className="agent-chat-msg-avatar">A</div>
+            <div className="agent-chat-msg-bubble" style={{ maxWidth: '100%' }}>
+              <BackgroundResultCard
+                task={bt}
+                onOpenFile={(path) => {
+                  if (window.__TAURI__ && window.__TAURI__.shell) {
+                    window.__TAURI__.shell.open(path).catch(err => {
+                      setError(`Failed to open file: ${err.message}`)
+                    })
+                  } else {
+                    setError(`File saved at: ${path}. Use your file explorer to open it.`)
+                  }
+                }}
+              />
+            </div>
+            <div className="agent-chat-msg-time" style={{ padding: '0 12px', textAlign: 'right' }}>{formatTime()}</div>
+          </div>
+        ))}
+
         {/* Recorded Workflow Preview */}
         {wfShowPreview && recorder.events && recorder.events.length > 0 && (
           <div className="agent-chat-msg agent-chat-msg--assistant">
@@ -1702,6 +1828,8 @@ export default function AccountantAgent() {
                 onDownload={handleEmailDownloadWithFolder}
                 onCancel={handleEmailClear}
                 loading={emailLoading}
+                error={emailError}
+                onErrorClear={() => setEmailError('')}
               />
             </div>
             <div className="agent-chat-msg-time" style={{ padding: '0 12px', textAlign: 'right' }}>{formatTime()}</div>

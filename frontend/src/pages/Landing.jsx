@@ -57,7 +57,9 @@ const BADGES = [
   { title: 'Approval Gates', desc: 'Every action requires human approval before execution.' },
   { title: 'Audit Logs', desc: 'Every change is recorded with actor, timestamp, and diff.' },
   { title: 'Restore', desc: 'Version history lets you undo changes with a reason.' },
-  { title: 'Open Source', desc: 'The source code is available for review and contribution.' }
+  { title: 'Open Source', desc: 'The source code is available for review and contribution.' },
+  { title: 'Multi-Agent Swarm', desc: 'Three specialist agents: Auditor, Tax, and Data Entry for every task.' },
+  { title: 'Semantic Bank Recon', desc: 'AI-driven bank-to-invoice matching with color-coded Excel reports.' },
 ]
 
 export default function Landing() {
@@ -141,7 +143,7 @@ export default function Landing() {
           padding: 24px; text-align: center;
         }
         .demo-box p { margin: 0 0 16px; color: #1c2330; }
-        .badge-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+        .badge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
         .badge-card {
           text-align: center; padding: 20px 12px;
           background: #fff; border: 1px solid #d8dee6; border-radius: 8px;
@@ -208,7 +210,7 @@ export default function Landing() {
 
       <section className="landing-hero">
         <h1>OfficePilot AI — Universal Voice Accountant Agent</h1>
-        <p>Use your voice to automate accounting work across Excel, browser apps, and any accounting platform — safely. Works with QuickBooks, Xero, Zoho Books, Odoo, FreshBooks, Wave, Sage, and any ERP you already use.</p>
+        <p>The Autonomous AI Accounting Firm. It watches your email, reconciles your bank, edits your Excel, and pushes to QuickBooks — all while you sleep.</p>
         <div className="btn-group">
           <button className="btn btn-primary" onClick={() => setShowForm(true)}>Join the Early Pilot Program</button>
           <a className="btn btn-outline" href="https://github.com/anomalyco/officepilot" target="_blank" rel="noopener noreferrer">View on GitHub</a>
@@ -257,11 +259,16 @@ export default function Landing() {
           </div>
           <div className="step">
             <div className="num">4</div>
+            <h4>Live Voice Editing</h4>
+            <p>Open your Excel file, toggle Live Mode, and tell the agent to format, pivot, or chart your data by voice.</p>
+          </div>
+          <div className="step">
+            <div className="num">5</div>
             <h4>Record &amp; Replay</h4>
             <p>Record your workflow with voice — OfficePilot captures every click and input. Name it with AI and replay anytime.</p>
           </div>
           <div className="step">
-            <div className="num">5</div>
+            <div className="num">6</div>
             <h4>Sync with QuickBooks</h4>
             <p>Read-only sync shows accounts, customers, and invoices before approval. Sandbox mode for worry-free testing.</p>
           </div>
@@ -287,7 +294,9 @@ export default function Landing() {
                 b.title === 'Local-First' ? '\u{1F4E1}' :
                 b.title === 'Approval Gates' ? '\u{2705}' :
                 b.title === 'Audit Logs' ? '\u{1F4CB}' :
-                b.title === 'Restore' ? '\u{1F504}' : '\u{1F4F1}'
+                b.title === 'Restore' ? '\u{1F504}' :
+                b.title === 'Multi-Agent Swarm' ? '\u{1F916}' :
+                b.title === 'Semantic Bank Recon' ? '\u{1F4CA}' : '\u{1F4F1}'
               }</div>
               <h4>{b.title}</h4>
               <p>{b.desc}</p>

@@ -41,7 +41,7 @@ router = APIRouter(prefix="/api/local", tags=["local"])
 
 # Phase / version constants must match main.py so the response is
 # consistent regardless of which endpoint the UI calls.
-APP_VERSION = "0.36.1"
+APP_VERSION = "1.0.0"
 APP_PHASE = 12
 
 

@@ -269,34 +269,19 @@ export const api = {
     return _fetchJson(`${API_BASE}/api/email/accounts`)
   },
   emailSearch(params = {}) {
-    return _fetchJson(`${API_BASE}/api/email/search`, {
-      method: 'POST',
-      body: JSON.stringify(params),
-    })
+    return _fetchJson(`${API_BASE}/api/email/search`, 'POST', params)
   },
   emailPreview(params = {}) {
-    return _fetchJson(`${API_BASE}/api/email/preview`, {
-      method: 'POST',
-      body: JSON.stringify(params),
-    })
+    return _fetchJson(`${API_BASE}/api/email/preview`, 'POST', params)
   },
   emailAttachmentsPreview(params = {}) {
-    return _fetchJson(`${API_BASE}/api/email/attachments/preview`, {
-      method: 'POST',
-      body: JSON.stringify(params),
-    })
+    return _fetchJson(`${API_BASE}/api/email/attachments/preview`, 'POST', params)
   },
   emailDownloadAttachment(params = {}) {
-    return _fetchJson(`${API_BASE}/api/email/attachments/download`, {
-      method: 'POST',
-      body: JSON.stringify(params),
-    })
+    return _fetchJson(`${API_BASE}/api/email/attachments/download`, 'POST', params)
   },
   emailBatchDownload(params = {}) {
-    return _fetchJson(`${API_BASE}/api/email/batch-download`, {
-      method: 'POST',
-      body: JSON.stringify(params),
-    })
+    return _fetchJson(`${API_BASE}/api/email/batch-download`, 'POST', params)
   },
 
   listEmailImports({ account_id, status, limit = 100, offset = 0 } = {}) {
@@ -1139,6 +1124,45 @@ export const api = {
   repeatRecentAgentWorkflow(body) {
     return _fetchJson(`${API_BASE}/api/agent/workflows/repeat-recent`, 'POST', body)
   },
+
+  // ── Phase 39: Background Tasks ─────────────────────────────────
+  runTaskInBackground(body) {
+    return _fetchJson(`${API_BASE}/api/agent/run-background`, 'POST', body)
+  },
+  getBackgroundTasks(params = {}) {
+    const q = new URLSearchParams(params).toString()
+    return _fetchJson(`${API_BASE}/api/agent/background-tasks?${q}`)
+  },
+  cancelBackgroundTask(id) {
+    return _fetchJson(`${API_BASE}/api/agent/background-tasks/${id}/cancel`, 'POST')
+  },
+  answerBackgroundTask(id, userAnswer) {
+    return _fetchJson(`${API_BASE}/api/agent/background-tasks/${id}/answer`, 'POST', { user_answer: userAnswer })
+  },
+  llmStatus() {
+    return _fetchJson(`${API_BASE}/api/agent/llm-status`)
+  },
+  listWatchers() {
+    return _fetchJson(`${API_BASE}/api/watchers/`)
+  },
+  createWatcher(body) {
+    return _fetchJson(`${API_BASE}/api/watchers/`, 'POST', body)
+  },
+  updateWatcher(id, body) {
+    return _fetchJson(`${API_BASE}/api/watchers/${id}`, 'PATCH', body)
+  },
+  deleteWatcher(id) {
+    return _fetchJson(`${API_BASE}/api/watchers/${id}`, 'DELETE')
+  },
+  runWatcherNow(id) {
+    return _fetchJson(`${API_BASE}/api/watchers/${id}/run-now`, 'POST')
+  },
+  bankParseFeed(content, filename = 'feed.csv') {
+    return _fetchJson(`${API_BASE}/api/agent/bank/parse`, 'POST', { content, filename })
+  },
+  bankReconcile(transactions) {
+    return _fetchJson(`${API_BASE}/api/agent/bank/reconcile`, 'POST', { transactions })
+  },
   listAgentWorkflowRuns(id, params = {}) {
     const q = new URLSearchParams(params).toString()
     return _fetchJson(`${API_BASE}/api/agent/workflows/${id}/runs?${q}`)
@@ -1148,6 +1172,17 @@ export const api = {
   },
   getAgentRunSummary(id) {
     return _fetchJson(`${API_BASE}/api/agent/runs/${id}/summary`)
+  },
+
+  // ── Phase 42: Learning & Corrections ────────────────────────────
+  createCorrection(body) {
+    return _fetchJson(`${API_BASE}/api/agent/correct`, 'POST', body)
+  },
+  listCorrections() {
+    return _fetchJson(`${API_BASE}/api/agent/corrections`)
+  },
+  deleteCorrection(id) {
+    return _fetchJson(`${API_BASE}/api/agent/corrections/${id}`, 'DELETE')
   },
   verifyAgentRunExcel(id) {
     return _fetchJson(`${API_BASE}/api/agent/runs/${id}/verify-excel`, 'POST', {})
@@ -1565,6 +1600,28 @@ export async function completeReleaseStep(body) {
 
 export async function resetReleaseChecklist() {
   return handle(await fetch(`${API_BASE}/api/system/release/checklist/reset`, {
+    method: 'POST',
+    headers: { ...authHeaders() }
+  }))
+}
+
+// ── Phase 46B — Resource Monitor ────────────────────────────────────────
+
+export async function getSystemResources() {
+  return handle(await fetch(`${API_BASE}/api/system/resources`, {
+    headers: { ...authHeaders() }
+  }))
+}
+
+export async function optimizeClearMemory() {
+  return handle(await fetch(`${API_BASE}/api/system/optimize/clear-memory`, {
+    method: 'POST',
+    headers: { ...authHeaders() }
+  }))
+}
+
+export async function optimizeKillExcel() {
+  return handle(await fetch(`${API_BASE}/api/system/optimize/kill-excel`, {
     method: 'POST',
     headers: { ...authHeaders() }
   }))

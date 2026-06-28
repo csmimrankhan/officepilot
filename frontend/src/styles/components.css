@@ -157,3 +157,95 @@ tbody tr:hover { background: #f8fafc; }
 .status-badge--sm { font-size: 10px; padding: 1px 6px; }
 
 /* ===================================================================
+   Resource Monitor (Phase 46B)
+   =================================================================== */
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.resource-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.resource-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--bg-subtle, #f1f5f9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.resource-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.resource-card-value {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.resource-card-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.resource-card-bar {
+  height: 6px;
+  background: var(--bg-subtle, #f1f5f9);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.resource-card-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.resource-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.resource-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-subtle, #f1f5f9);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+/* ===================================================================
+   (continued in next module)
+   =================================================================== */

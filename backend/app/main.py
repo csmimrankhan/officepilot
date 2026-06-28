@@ -53,6 +53,10 @@ from .routers import email_automation as email_automation_router
 from .routers import app_updates as app_updates_router
 from .routers import billing as billing_router
 from .routers import integrations_quickbooks as quickbooks_router
+from .routers import background_tasks as background_tasks_router
+from .routers import watchers as watchers_router
+from .routers import learning as learning_router
+from .routers import release_notes as release_notes_router
 
 
 logging.basicConfig(
@@ -201,6 +205,15 @@ async def lifespan(app: FastAPI):
                 _db.commit()
     except Exception:
         logger.exception("Phase 35 feature entitlement seed failed (non-fatal)")
+    # Phase 40A: start background watcher scheduler.
+    try:
+        from .services.watcher_scheduler import WatcherScheduler
+
+        _ws = WatcherScheduler.get_instance()
+        _ws.start()
+        logger.info("Phase 40A: watcher scheduler started")
+    except Exception:
+        logger.exception("Phase 40A watcher scheduler start failed (non-fatal)")
     mark_startup("backend_ready")
     logger.info(
         "OfficePilot AI backend ready (env=%s, db=%s, phase=23, data=%s, startup=%.2fs)",
@@ -210,6 +223,13 @@ async def lifespan(app: FastAPI):
         get_metrics().total_seconds() or 0,
     )
     yield
+    # Phase 40A: stop background watcher scheduler on shutdown.
+    try:
+        from .services.watcher_scheduler import WatcherScheduler
+
+        WatcherScheduler.get_instance().stop()
+    except Exception:
+        pass
 
 
 def create_app() -> FastAPI:
@@ -222,7 +242,7 @@ def create_app() -> FastAPI:
             "and any accounting platform via voice/text commands, with step-by-step planning, "
             "approval, safe execution, and workflow memory."
         ),
-        version="0.36.1",
+        version="1.0.0",
         lifespan=lifespan,
         openapi_tags=[
             {"name": "auth", "description": "User registration, login, JWT tokens, session management"},
@@ -273,7 +293,7 @@ def create_app() -> FastAPI:
         return {
             "ok": True,
             "app": "officepilot-ai",
-            "version": "0.36.1",
+            "version": "1.0.0",
             "phase": 23,
             "startup_seconds": metrics.total_seconds(),
             "demo_mode": settings.demo_mode,
@@ -362,6 +382,18 @@ def create_app() -> FastAPI:
     app.include_router(usage_router.router)
     app.include_router(pilot_readiness_router.router)
     app.include_router(public_waitlist_router.router)
+
+    # ── Background tasks ──────────────────────────────────────────
+    app.include_router(background_tasks_router.router)
+
+    # ── Watchers (Phase 40A) ──────────────────────────────────────
+    app.include_router(watchers_router.router)
+
+    # ── Learning & Corrections (Phase 42) ─────────────────────────
+    app.include_router(learning_router.router)
+
+    # ── Release Notes (Phase 46A) ──────────────────────────────────
+    app.include_router(release_notes_router.router)
 
     # ── Billing & licensing ────────────────────────────────────────
     app.include_router(billing_router.router)

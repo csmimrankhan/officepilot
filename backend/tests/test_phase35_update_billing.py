@@ -341,7 +341,7 @@ def test_updater_with_release_returns_valid_json(client, user_token, db_session)
     """Seeded release returns Tauri-compatible updater JSON."""
     from app.models.app_release import AppRelease
     release = AppRelease(
-        version="0.36.1",
+        version="1.0.0",
         platform="windows",
         channel="stable",
         target="windows-x86_64",
@@ -363,7 +363,7 @@ def test_updater_with_release_returns_valid_json(client, user_token, db_session)
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["version"] == "0.36.1"
+    assert data["version"] == "1.0.0"
     assert data["notes"] == "Test release"
     assert "windows-x86_64" in data["platforms"]
     assert data["platforms"]["windows-x86_64"]["signature"] == "dW50cnVzdGVkIHNpZ25hdHVyZQo="
@@ -387,7 +387,7 @@ def test_updater_latest_stable_selected(client, user_token, db_session):
         created_at=now - timedelta(days=30),
     )
     r2 = AppRelease(
-        version="0.36.1", platform="windows", channel="stable",
+        version="1.0.0", platform="windows", channel="stable",
         target="windows-x86_64", download_url="http://new.com",
         updater_signature="new_sig", pub_date="2026-06-12T00:00:00Z",
         release_notes="New release",
@@ -402,7 +402,7 @@ def test_updater_latest_stable_selected(client, user_token, db_session):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["version"] == "0.36.1"
+    assert data["version"] == "1.0.0"
     assert data["notes"] == "New release"
 
 
@@ -412,7 +412,7 @@ def test_updater_wrong_platform_returns_empty(client, user_token, db_session):
     db_session.query(AppRelease).delete()
     db_session.commit()
     db_session.add(AppRelease(
-        version="0.36.1", platform="macos", channel="stable",
+        version="1.0.0", platform="macos", channel="stable",
         target="darwin-x86_64", download_url="http://mac.com",
         updater_signature="sig", pub_date="2026-06-12T00:00:00Z",
     ))

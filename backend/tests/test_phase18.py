@@ -219,7 +219,7 @@ class TestAboutAPI:
         resp = client.get("/api/about")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["version"] == "0.36.1"
+        assert data["version"] == "1.0.0"
         assert data["phase"] == 19
         assert "app_name" in data
         assert "database_path" in data

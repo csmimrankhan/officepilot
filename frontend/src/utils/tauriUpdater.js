@@ -11,7 +11,7 @@ export async function checkForTauriUpdate() {
   }
   try {
     const res = await api.checkUpdate({
-      app_version: '0.36.1',
+      app_version: '1.0.0',
       platform: 'windows',
       channel: 'stable',
     })

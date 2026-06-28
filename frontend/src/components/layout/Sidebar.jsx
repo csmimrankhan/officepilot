@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  MessageSquare, Sparkles, History, Clock, Mic,
-  Settings, Plug, ShieldCheck,
+  MessageSquare, Sparkles, History, Clock, Mic, Scale,
+  Settings, Plug, ShieldCheck, Eye,
   LayoutDashboard, Users, ClipboardList, ListChecks, Activity, Brain,
   Plus, ChevronRight, ChevronDown,
 } from 'lucide-react'
@@ -17,9 +17,11 @@ const MAIN_ITEMS = [
 
 const WORKSPACE_ITEMS = [
   { to: '/app/voice-recorder', label: 'Voice Recorder', icon: Mic },
+  { to: '/app/reconciliation', label: 'Reconciliation', icon: Scale },
   { to: '/app/settings', label: 'Settings', icon: Settings },
   { to: '/app/api-setup', label: 'API Setup', icon: Plug },
   { to: '/app/safety', label: 'Safety', icon: ShieldCheck },
+  { to: '/watchers', label: 'Watchers', icon: Eye },
 ]
 
 const ADMIN_ITEMS = [
@@ -36,12 +38,13 @@ const ADVANCED_ITEMS = [
   { to: '/app/screen-control', label: 'Screen Control', icon: Settings },
   { to: '/app/local-agent', label: 'Local Agent', icon: Settings },
   { to: '/app/storage', label: 'Storage', icon: History },
+  { to: '/app/system', label: 'Resource Monitor', icon: Activity },
 ]
 
 export default function Sidebar({ user, isOwnerOrAdmin, mobileOpen, onMobileClose }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const navigate = useNavigate()
-  const version = 'v0.36.1'
+  const version = 'v1.0.0'
 
   function handleNav() {
     if (mobileOpen && onMobileClose) onMobileClose()

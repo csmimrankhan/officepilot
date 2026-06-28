@@ -37,7 +37,7 @@ def about(current_user: User = Depends(get_current_user), db: Session = Depends(
             break
 
     return {
-        "version": "0.36.1",
+        "version": "1.0.0",
         "phase": 19,
         "app_name": "OfficePilot AI",
         "backend_healthy": True,

@@ -53,6 +53,14 @@ const faqs = [
     q: 'What makes OfficePilot different from other invoice tools?',
     a: 'OfficePilot combines four things most tools don\'t: (1) local-first processing — your data never leaves your machine, (2) approval gates on every write, export, and sync, (3) full version history with one-click restore and mandatory reason, and (4) a global kill switch that can halt all automation instantly. It\'s designed for teams that need automation they can trust, not just automation that\'s fast.',
   },
+  {
+    q: 'Does OfficePilot work with my existing Excel files?',
+    a: 'Yes. With Phase 45B Live Excel Mode, OfficePilot connects directly to your open Excel window via COM automation to create Pivot Tables, apply conditional formatting, and calculate formulas in real-time.',
+  },
+  {
+    q: 'How does the Bank Reconciliation work?',
+    a: 'OfficePilot uses local Semantic Memory (Vector DB) to conceptually match vague bank transactions (like "AMZN Mktp") to your extracted invoices, generating a color-coded Excel report.',
+  },
 ];
 
 export default function FAQPage() {

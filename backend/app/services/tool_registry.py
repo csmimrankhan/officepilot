@@ -427,7 +427,43 @@ TOOL_REGISTRY: list[ToolDef] = [
     ),
     ToolDef(
         name="excel_create_pivot_table",
-        description="Create a pivot-like summary sheet from data grouped by a column",
+        description="[COM] Create a pivot table using Excel COM automation (xlwings). Requires Excel installed.",
+        risk_level="high",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=True,
+    ),
+    ToolDef(
+        name="excel_switch_workbooks",
+        description="[COM] Copy a sheet from one workbook to another using Excel COM automation",
+        risk_level="medium",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=True,
+    ),
+    ToolDef(
+        name="excel_advanced_formatting",
+        description="[COM] Apply conditional formatting to a range using Excel COM automation",
+        risk_level="medium",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=True,
+    ),
+    ToolDef(
+        name="excel_calculate_and_read",
+        description="[COM] Force Excel to calculate formulas and read the computed value from a cell",
+        risk_level="low",
+        approval_required=False,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=False,
+    ),
+    ToolDef(
+        name="excel_create_chart",
+        description="[COM] Create a chart in an Excel workbook using COM automation",
         risk_level="medium",
         approval_required=True,
         can_run_in_dry_run=True,
@@ -767,6 +803,53 @@ TOOL_REGISTRY: list[ToolDef] = [
     ),
     # ═══════════════════════════════════════════════════════════════════════
     # Safety / Audit / Validation Tools
+    # ── Accounting Write-Back Tools (Phase 43) ──────────────────────────────
+    ToolDef(
+        name="quickbooks_create_bill",
+        description="Create a real Bill in QuickBooks. HIGH RISK — requires explicit user approval and live mode. Creates an Accounts Payable bill with vendor name, line items, total amount, and due date.",
+        risk_level="high",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=False,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "vendor_name": {"type": "string", "description": "Vendor/supplier name for the bill"},
+                "line_items": {"type": "array", "items": {"type": "object", "properties": {
+                    "description": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "account": {"type": "string", "description": "QuickBooks account name (e.g. Office Supplies)"},
+                }}},
+                "total_amount": {"type": "number", "description": "Total bill amount"},
+                "due_date": {"type": "string", "description": "Due date in YYYY-MM-DD format"},
+            },
+            "required": ["vendor_name", "total_amount"],
+        },
+    ),
+    ToolDef(
+        name="xero_create_bill",
+        description="Create a real Bill (ACCPAY Invoice) in Xero. HIGH RISK — requires explicit user approval and live mode. Creates an Accounts Payable invoice with contact name, line items, total amount, and due date.",
+        risk_level="high",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=False,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "vendor_name": {"type": "string", "description": "Contact/supplier name for the bill"},
+                "line_items": {"type": "array", "items": {"type": "object", "properties": {
+                    "description": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "account_code": {"type": "string", "description": "Xero account code (e.g. 400)"},
+                }}},
+                "total_amount": {"type": "number", "description": "Total bill amount"},
+                "due_date": {"type": "string", "description": "Due date in YYYY-MM-DD format"},
+            },
+            "required": ["vendor_name", "total_amount"],
+        },
+    ),
     # ═══════════════════════════════════════════════════════════════════════
     ToolDef(
         name="approval_request",
@@ -1123,6 +1206,135 @@ TOOL_REGISTRY: list[ToolDef] = [
         can_run_in_dry_run=True,
         audit_required=True,
         snapshot_required=True,
+    ),
+    # ── Phase 39: Cloud Storage Tools (Google Drive — Read-Only) ────────────
+    ToolDef(
+        name="drive_list_recent_files",
+        description="List recent files from Google Drive, optionally filtered by keywords",
+        risk_level="low",
+        approval_required=False,
+        can_run_in_dry_run=True,
+        audit_required=False,
+        snapshot_required=False,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "days_back": {"type": "integer", "description": "Number of days to look back (default 7)"},
+                "keywords": {"type": "array", "items": {"type": "string"}, "description": "Optional keywords to filter file names"},
+            },
+        },
+    ),
+    ToolDef(
+        name="drive_download_file",
+        description="Download a file from Google Drive to a local secure folder",
+        risk_level="low",
+        approval_required=False,
+        can_run_in_dry_run=True,
+        audit_required=False,
+        snapshot_required=False,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "file_id": {"type": "string", "description": "Google Drive file ID to download"},
+                "target_folder": {"type": "string", "description": "Optional target folder path (defaults to data_dir/drive_downloads/{user_id}/)"},
+            },
+        },
+    ),
+    # ── Phase 41: Semantic Memory & RAG Tools ──────────────────────────────
+    ToolDef(
+        name="semantic_search_invoices",
+        description="Search indexed invoice data using natural language queries. Returns the best-matching invoices with vendor, amount, date, and file path.",
+        risk_level="low",
+        approval_required=False,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=False,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Natural language search query (e.g. 'invoices over $1000 from Acme Corp')"},
+                "top_k": {"type": "integer", "description": "Number of results to return (default 5)"},
+            },
+            "required": ["query"],
+        },
+    ),
+    # ── Phase 39: Background Daemon & Analytics Tools ──────────────────────
+    ToolDef(
+        name="analyze_invoice_dataset",
+        description="Calculate aggregate statistics (sum, count, avg, min/max) from an invoice dataset",
+        risk_level="low",
+        approval_required=False,
+        can_run_in_dry_run=True,
+        audit_required=False,
+        snapshot_required=False,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "invoices_data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "vendor": {"type": "string"},
+                            "total_amount": {"type": "number"},
+                            "date": {"type": "string"},
+                        },
+                    },
+                },
+            },
+        },
+    ),
+    # ═══════════════════════════════════════════════════════════════════════
+    # Phase 45A: Bank Reconciliation Tools
+    # ═══════════════════════════════════════════════════════════════════════
+    ToolDef(
+        name="bank_parse_feed",
+        description="Parse a bank feed CSV or JSON file into structured transactions",
+        risk_level="low",
+        approval_required=False,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=False,
+    ),
+    ToolDef(
+        name="bank_reconcile_and_report",
+        description="Match bank transactions to invoices using semantic search and generate a color-coded Excel report",
+        risk_level="medium",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=True,
+    ),
+    # ═══════════════════════════════════════════════════════════════════════
+    # Phase 45B: Live Excel Editing (Active Workbook COM)
+    # ═══════════════════════════════════════════════════════════════════════
+    ToolDef(
+        name="excel_live_edit_active_workbook",
+        description="Connect to the active visible Excel workbook and execute live editing commands (format, write values, insert pivot, chart, etc.) via COM automation. HIGH RISK: edits the user's active workbook directly with an undo snapshot.",
+        risk_level="high",
+        approval_required=True,
+        can_run_in_dry_run=True,
+        audit_required=True,
+        snapshot_required=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "command_type": {
+                    "type": "string",
+                    "enum": [
+                        "format_range", "set_value", "write_values", "apply_formula",
+                        "clear_range", "conditional_format", "insert_pivot", "insert_chart",
+                        "read_range", "get_active_cell", "list_sheets", "activate_sheet",
+                    ],
+                    "description": "The type of live edit command to execute on the active workbook",
+                },
+                "params": {
+                    "type": "object",
+                    "description": "Parameters for the command (range, value, formula, color, etc.)",
+                },
+            },
+            "required": ["command_type", "params"],
+        },
     ),
 ]
 

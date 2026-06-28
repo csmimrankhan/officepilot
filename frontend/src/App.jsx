@@ -118,6 +118,9 @@ const VoiceRecorder = lazy(() => import('./pages/VoiceRecorder.jsx'))
 const ReleaseReadiness = lazy(() => import('./pages/ReleaseReadiness.jsx'))
 const StartupMetrics = lazy(() => import('./pages/StartupMetrics.jsx'))
 const CleanupPage = lazy(() => import('./pages/CleanupPage.jsx'))
+const WatcherSettings = lazy(() => import('./pages/WatcherSettings.jsx'))
+const BankReconciliation = lazy(() => import('./pages/BankReconciliation.jsx'))
+const ResourceMonitor = lazy(() => import('./pages/ResourceMonitor.jsx'))
 
 function NotFound() {
   return (
@@ -256,6 +259,9 @@ function AuthenticatedRoutes() {
     { path: '/dictation-history', element: <DictationHistory /> },
     { path: '/release/readiness', element: <ReleaseReadiness /> },
     { path: '/system/startup-metrics', element: <StartupMetrics /> },
+    { path: '/watchers', element: <WatcherSettings /> },
+    { path: '/app/reconciliation', element: <BankReconciliation /> },
+    { path: '/app/system', element: <ResourceMonitor /> },
     { path: '/pilot/feedback', element: <FeedbackInbox /> },
     { path: '/pilot/bug-reports', element: <BugReports /> },
     { path: '/pilot/usage', element: <PilotUsageReview /> },

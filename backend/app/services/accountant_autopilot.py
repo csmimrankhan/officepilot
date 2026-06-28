@@ -247,38 +247,30 @@ def _build_email_download_plan(query: str, normalized: str) -> dict:
             },
             {
                 "step_order": 2,
-                "step_type": "email_preview_messages",
-                "tool": "email_preview_messages",
+                "step_type": "approval_checkpoint",
+                "tool": "approval_request",
                 "target": "User",
-                "instruction": "Show the matched emails with sender, subject, date, and attachment names for review.",
-                "expected_result": "User reviews the email list.",
+                "instruction": "Review the search results. Select which emails to download attachments from.",
+                "expected_result": "User selects emails and provides output folder.",
                 "requires_approval": True,
-                "risk_level": "low",
-                "parameters": {},
+                "risk_level": "medium",
+                "parameters": {"prompt": "Select the emails you want to download attachments from, then choose an output folder."},
             },
             {
                 "step_order": 3,
                 "step_type": "email_download_attachments",
                 "tool": "email_download_attachments",
                 "target": "Gmail attachments",
-                "instruction": "Download all attachments from the approved emails to the local Downloads folder.",
+                "instruction": "Download all attachments from the selected emails to the specified folder.",
                 "expected_result": "Attachment files saved locally.",
                 "requires_approval": True,
                 "risk_level": "medium",
                 "parameters": {
                     "output_folder": "{downloads_folder}",
+                    "needs_input": True,
+                    "input_type": "folder",
+                    "input_label": "Output folder path for downloaded attachments",
                 },
-            },
-            {
-                "step_order": 4,
-                "step_type": "approval_checkpoint",
-                "tool": "approval_request",
-                "target": "User",
-                "instruction": "Confirm the downloaded files and decide next steps.",
-                "expected_result": "User reviews downloaded files.",
-                "requires_approval": True,
-                "risk_level": "low",
-                "parameters": {"prompt": "Attachments downloaded. Would you like to open the folder or create an Excel summary?"},
             },
         ],
     }
@@ -414,6 +406,46 @@ def build_accountant_plan(
                 "clarification_question": None,
             }
 
+    # Step 3: Live Excel commands — direct route for editing active workbook
+    LIVE_EXCEL_PATTERNS = re.compile(
+        r"(edit\s+this\s+excel|change\s+this\s+sheet|format\s+the\s+active\s+workbook|"
+        r"live\s+edit\s+excel|active\s+workbook.*format|"
+        r"excel\s+mein\s+change\s+karo|is\s+excel\s+mein\s+edit\s+karo|"
+        r"live\s+excel\s+edit|current\s+workbook|"
+        r"is\s+sheet\s+ko\s+format\s+karo|yeh\s+excel\s+edit\s+karo|"
+        r"active\s+excel\s+mein\s+(format|change|edit)\s+karo)",
+        re.IGNORECASE,
+    )
+    if LIVE_EXCEL_PATTERNS.search(normalized):
+        live_summary = "I will connect to your active Excel workbook and apply the requested changes directly."
+        plan_data = {
+            "task_title": "Live Excel Edit",
+            "task_type": "live_excel_edit",
+            "language": lang,
+            "summary_for_user": live_summary,
+            "risk_level": "high",
+            "requires_approval": True,
+            "clarification_needed": False,
+            "clarification_question": None,
+            "can_save_workflow": False,
+            "blocked_reason": None,
+            "live_excel_mode": True,
+            "steps": [
+                {
+                    "step_order": 1,
+                    "step_type": "excel_live_edit_active_workbook",
+                    "tool": "excel_live_edit_active_workbook",
+                    "target": "active_excel_workbook",
+                    "instruction": "Connect to the active Excel workbook and execute the requested live edit",
+                    "expected_result": "Changes applied directly to the active Excel workbook with undo snapshot",
+                    "requires_approval": True,
+                    "risk_level": "high",
+                    "parameters": {"command_type": "format_range", "params": {}},
+                },
+            ],
+        }
+        return plan_data
+
     # --- LLM-first planning ---
     # All language-specific regex cascades (Roman Urdu Excel Downloads,
     # PDF Debit/Credit, Recording commands, Skill Match, Workflow Replay,
@@ -425,7 +457,7 @@ def build_accountant_plan(
     # LLM provider. The system prompt instructs the LLM to understand and
     # conceptually translate the input, then produce a structured JSON plan.
 
-    plan_data = build_task_plan(command_text)
+    plan_data = build_task_plan(command_text, db=db, user=user)
 
     context = build_agent_context(db, user)
     risk = classify_task_risk(command_text, context)

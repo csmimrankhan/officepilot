@@ -217,6 +217,8 @@ def _truncate_all_tables() -> None:
         "accounting_skill_versions",
         "accounting_skill_runs",
         "accounting_skills",
+        # Phase 40A — Background watchers
+        "background_watchers",
     ]
     with engine.begin() as conn:
         for tbl in tables:

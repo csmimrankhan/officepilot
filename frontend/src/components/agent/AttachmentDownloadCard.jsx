@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function AttachmentDownloadCard({
   attachments = [],
@@ -6,44 +6,50 @@ export default function AttachmentDownloadCard({
   onDownload,
   onCancel,
   loading,
+  error: externalError,
+  onErrorClear,
 }) {
   const [folder, setFolder] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/system/downloads-path')
+      .then(r => r.json())
+      .then(d => { if (d.path) setFolder(d.path) })
+      .catch(() => {})
+  }, [])
 
   if (!attachments || attachments.length === 0) return null
 
   const handleBrowse = async () => {
     try {
-      let selected
       if (window.__TAURI__?.dialog?.open) {
-        selected = await window.__TAURI__.dialog.open({ directory: true, multiple: false, title: 'Select output folder' })
-      } else if (window.showDirectoryPicker) {
+        const selected = await window.__TAURI__.dialog.open({ directory: true, multiple: false, title: 'Select output folder' })
+        if (selected) {
+          setFolder(typeof selected === 'string' ? selected : selected.path || selected)
+          setError('')
+        }
+        return
+      }
+    } catch (_e) { /* Tauri dialog not available */ }
+    try {
+      if ('showDirectoryPicker' in window) {
         const handle = await window.showDirectoryPicker()
-        selected = handle.name
-      } else {
-        const input = document.createElement('input')
-        input.type = 'text'
-        input.placeholder = 'Paste folder path...'
-        document.body.appendChild(input)
-        selected = null
-        document.body.removeChild(input)
+        setFolder(folder || 'C:\\Users\\dsmim\\Downloads')
+        setError('Folder selected. If the backend cannot access it, paste the full path manually.')
+        return
       }
-      if (selected && typeof selected === 'string') {
-        setFolder(selected)
-        setError('')
-      } else if (selected && selected.path) {
-        setFolder(selected.path)
-        setError('')
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError' && err.name !== 'SecurityError') {
-        setError(`Folder picker error: ${err.message}`)
-      }
+    } catch (_e) { /* cancelled or unsupported */ }
+    const path = window.prompt('Enter the full folder path for downloads:', folder || 'C:\\Users\\dsmim\\Downloads')
+    if (path && path.trim()) {
+      setFolder(path.trim())
+      setError('')
     }
   }
 
   const handleDownload = () => {
     setError('')
+    if (onErrorClear) onErrorClear()
     if (!folder.trim()) {
       setError('Please enter or select an output folder path')
       return
@@ -101,9 +107,11 @@ export default function AttachmentDownloadCard({
             Browse
           </button>
         </div>
-        {error && <div className="att-download-error">{error}</div>}
+        {(error || externalError) && (
+          <div className="att-download-error">{error || externalError}</div>
+        )}
         <div className="att-download-actions">
-          <button className="att-download-btn primary" onClick={handleDownload} disabled={loading || !folder.trim()}>
+          <button className="att-download-btn primary" onClick={handleDownload} disabled={loading}>
             {loading ? 'Downloading...' : 'Approve & Download'}
           </button>
           {onCancel && (

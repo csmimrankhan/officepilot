@@ -87,7 +87,7 @@ def _write_package_metadata(package_dir: Path, br: BugReport, user_id: int, sett
         "title": br.title,
         "description": redact_text(br.description),
         "severity": br.severity,
-        "app_version": "0.36.1",
+        "app_version": "1.0.0",
         "backend_phase": 19,
         "demo_mode": settings.demo_mode,
         "created_at": datetime.utcnow().isoformat(),

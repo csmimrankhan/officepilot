@@ -93,6 +93,9 @@ def init_db() -> None:
         workflow_recorded_event,
         workflow_skill_draft,
         quickbooks_sync_state,
+        background_task,
+        background_watcher,
+        correction_rule,
     )
 
     Base.metadata.create_all(bind=engine)

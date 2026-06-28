@@ -50,7 +50,7 @@ class TestStartupMetrics:
         data = resp.json()
         assert "startup_seconds" in data
         assert data["phase"] == 23
-        assert data["version"] == "0.36.1"
+        assert data["version"] == "1.0.0"
 
     def test_startup_metrics_no_auth_required(self, client: TestClient):
         resp = client.get("/api/system/startup-metrics")

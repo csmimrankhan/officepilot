@@ -30,7 +30,7 @@ from ..services.public_pilot_waitlist import (
     submit_waitlist,
     update_waitlist_status,
 )
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 router = APIRouter(tags=["admin"])
 
@@ -184,6 +184,61 @@ def admin_waitlist_summary(
 ):
     _require_admin(current_user)
     return get_waitlist_summary(db=db)
+
+
+_LAUNCH_EMAIL_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OfficePilot v1.0.0 Launch</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f7fa;padding:32px;margin:0">
+<table role="presentation" style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+<tr><td style="background:linear-gradient(135deg,#1f4e78,#163a5a);padding:40px 32px;text-align:center">
+<h1 style="color:#fff;margin:0 0 8px;font-size:24px;">🚀 OfficePilot v1.0.0 is here</h1>
+<p style="color:rgba(255,255,255,.85);margin:0;font-size:16px;">Your Autonomous AI Accountant</p>
+</td></tr>
+<tr><td style="padding:32px">
+<p style="color:#333;font-size:16px;line-height:1.6">Hello {name},</p>
+<p style="color:#555;font-size:15px;line-height:1.6">We are thrilled to announce the official release of <strong>OfficePilot v1.0.0</strong> — our biggest update yet, bringing enterprise-grade automation to your accounting workflow.</p>
+<h2 style="color:#1f4e78;font-size:18px;margin:28px 0 16px">What's New in v1.0.0</h2>
+<table role="presentation" style="width:100%;border-collapse:collapse">
+<tr><td style="padding:12px 16px;background:#f8faff;border-radius:8px;margin-bottom:10px;display:block">
+<strong style="color:#1f4e78;display:block;margin-bottom:4px">🤖 Multi-Agent Swarm Architecture</strong>
+<span style="color:#666;font-size:14px">Three specialist AI agents — Auditor, Tax, Data Entry — each focused on their domain, working together to handle every accounting task.</span>
+</td></tr>
+<tr><td style="padding:12px 16px;background:#f8faff;border-radius:8px;margin-bottom:10px;display:block">
+<strong style="color:#1f4e78;display:block;margin-bottom:4px">⚖️ Semantic Bank Reconciliation</strong>
+<span style="color:#666;font-size:14px">Conceptually match vague bank transactions to your invoices using local vector memory, with color-coded Excel reports and three confidence tiers.</span>
+</td></tr>
+<tr><td style="padding:12px 16px;background:#f8faff;border-radius:8px;margin-bottom:10px;display:block">
+<strong style="color:#1f4e78;display:block;margin-bottom:4px">🎤 Live Voice-Driven Excel Editing</strong>
+<span style="color:#666;font-size:14px">Connect directly to your open Excel window via COM automation. Format, pivot, chart, and calculate by voice — with safety undo snapshots.</span>
+</td></tr>
+<tr><td style="padding:12px 16px;background:#f8faff;border-radius:8px;margin-bottom:10px;display:block">
+<strong style="color:#1f4e78;display:block;margin-bottom:4px">👁️ Autonomous Background Watchers</strong>
+<span style="color:#666;font-size:14px">Always-on monitors for Gmail, Google Drive, and local folders — silently scanning for invoices and extracting data while you work.</span>
+</td></tr>
+<tr><td style="padding:12px 16px;background:#f8faff;border-radius:8px;display:block">
+<strong style="color:#1f4e78;display:block;margin-bottom:4px">🧠 Ollama Local LLM Brain</strong>
+<span style="color:#666;font-size:14px">Private on-device AI with zero cloud dependency. Your data never leaves your machine.</span>
+</td></tr>
+</table>
+<div style="text-align:center;margin:32px 0 8px">
+<a href="https://officepilot.ai/download" style="display:inline-block;padding:14px 36px;background:#1f4e78;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">Download OfficePilot v1.0.0</a>
+</div>
+<p style="color:#888;font-size:13px;text-align:center;margin-top:24px">Questions? Reply to this email or visit our <a href="https://github.com/anomalyco/officepilot" style="color:#1f4e78">GitHub</a>.\nThe OfficePilot Team</p>
+</td></tr>
+</table>
+</body>
+</html>"""
+
+
+@router.get("/api/admin/waitlist/launch-email", response_class=HTMLResponse)
+def admin_launch_email(
+    name: str = Query("there", min_length=1),
+    current_user: UserModel = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    return _LAUNCH_EMAIL_TEMPLATE.replace("{name}", name)
 
 
 @router.get("/api/admin/waitlist/export.csv", response_class=PlainTextResponse)

@@ -55,6 +55,21 @@ Phases shipped so far:
 - `_build_excel_plan` now uses consolidated `excel_create_summary_from_file` tool (1 step instead of 5 old individual tools).
 - `execute_run_step` resolves template variables (`{file_path}`, `{sheet_name}`, etc.) in params before passing to executor, so user-supplied values from the request body are properly injected.
 - 22 Phase 31 backend tests, 8 Excel command detection tests, all pass.
+- **Phase 39** (complete): Backend Background Daemon & Analytics Engine — Thread-based task runner, `BackgroundTask` model, `analyze_invoice_dataset` analytics tool, background task router with 4 endpoints. Google Drive Read-Only Integration with mock adapter, 2 Drive tools, safety gate. Planner wiring with background intent detection (`BACKGROUND_PATTERNS`), Drive→Excel→Analytics chain in mock planner, auto-background task creation on approve-plan. Frontend: `BackgroundTaskWidget` in TopBar with polling / pulsing icon / dropdown / progress bar, `BackgroundResultCard` in chat timeline, background approval flow, API methods. Tauri OS notifications on task completion with web fallback. Completed-task recovery on app start. 66 backend tests + 536 frontend tests (all pass).
+- **Phase 40A** (complete): Background Watcher Scheduler — `BackgroundWatcher` model with 3 source types (gmail/drive/folder), `WatcherScheduler` singleton with thread-based polling loop checking due watchers every 60s, `SourceWatcher` predefined read-only plans, safety gate blocking unregistered and medium/high-risk tools (→ `pending_approval`). CRUD router with 5 endpoints (list/create/update/delete/run-now). Frontend: `WatcherSettings.jsx` page with form, source type selector (Mail/HardDrive/Folder icons), inline Pause/Resume/Run Now/Delete, keywords config. Registered in `App.jsx` at `/watchers` and sidebar with Eye icon. 20 backend tests + 10 frontend tests.
+- **Phase 40B** (complete): Real Local LLM Brain with Ollama — `OllamaAgentProvider` via `_call_ollama_provider()` + `_build_ollama_system_prompt()` in accountant_agent.py, `GET /api/agent/llm-status` endpoint listing available models, `ollama_base_url`/`ollama_model` config with `http://localhost:11434`/`llama3.1` defaults, graceful mock fallback on connection failure, "Local AI Brain" status UI in LocalAgent.jsx. 17 backend tests.
+- **Phase 40C** (complete): Autonomous Error Recovery & Self-Correction — `RECOVERY_MAP` in background_runner.py with 3 recovery strategies (low_confidence→screen_read_text, not_found→file_find_latest_download, unsupported→pause), `paused_for_input` status with `clarification_question`, `POST /background-tasks/{id}/answer` endpoint injecting user answer as a step, `BackgroundTaskWidget` "Needs Attention" badge with `AlertTriangle` icon, clarification text input, and Enter/Send. 15 backend + 10 frontend tests, 52 total Phase 40 tests.
+- **Phase 41** (complete): Semantic Memory & RAG — Local ChromaDB vector database at `data_dir/vector_store/`, `MockEmbeddingFunction` for deterministic CI-safe embeddings, `SemanticMemory` service with `index_invoice()` and `semantic_search()`, `semantic_search_invoices` tool (low risk, no approval) in tool_registry.py + executor, auto-indexing of extracted invoices in `_execute_extract_invoice_data`. 16 backend tests.
+- **Phase 42** (complete): Continuous Learning & Correction Loop — Feedback loop where the agent learns from user corrections and dynamically injects rules into the Ollama LLM system prompt. `AccountingCorrectionRule` model, `learning_loop.py` service, `learning.py` router at `/api/agent/correct` + `GET /corrections` + `DELETE /corrections/{id}`, "Correct This" button in `BackgroundResultCard.jsx`, correction rules injected via `_build_ollama_system_prompt(db=db, user_id=user_id)`. 15 backend + 7 frontend tests.
+- **Phase 43** (complete): Real Accounting Write-Back (QuickBooks/Xero API) — `QuickBooksWritebackAdapter`, `XeroWritebackAdapter`, `quickbooks_create_bill` / `xero_create_bill` tools (high-risk, approval required), `QUICKBOOKS_WRITEBACK_ENABLED` safety gate, `PushToQuickBooksButton` in `BackgroundResultCard.jsx`. 10 backend + 5 frontend tests.
+- **Phase 44** (complete): Deep Excel COM Automation via xlwings — `ExcelComAdapter` with `create_pivot_table`, `switch_workbook_and_copy`, `apply_conditional_formatting`, `calculate_and_read_formula`, `create_chart`. VBA macro blocklist, file path safety, COM timeout/zombie prevention. `BackgroundTaskRunner` COM timeout. Frontend "Advanced Excel" badge + approval warning. 45 backend + 38 frontend tests.
+- **Phase 45A** (complete): Automated Bank Reconciliation — `BankFeedAdapter` (CSV/JSON parsing), `ReconciliationEngine` (semantic memory + exact-match fallback, 3-tier confidence), `generate_reconciliation_excel` (COM with openpyxl fallback). 2 tools (`bank_parse_feed` low-risk, `bank_reconcile_and_report` medium-risk requiring approval). 2 backend endpoints at `/api/agent/bank/*`. Frontend `BankReconciliation.jsx` page with upload, transaction table, reconcile button, summary stats, Excel download. Route `/app/reconciliation`. Nav link with Scale icon. 24 backend + 9 frontend tests.
+- **Phase 45B** (complete): Voice-Driven Live Excel Editing (Active Workbook COM) — `ExcelComAdapter.connect_to_active_workbook()` hooks into the user's visible Excel window via `xw.apps.active`; `execute_live_command()` routes 12 command types with safety undo snapshot before every write. `excel_live_edit_active_workbook` tool (high risk, approval YES). `LIVE_EXCEL_PATTERNS` voice intent detection. Frontend "Live Excel Mode" toggle in TopBar with red pulsing dot. 37 backend tests.
+- **Phase 45C** (complete): Multi-Agent Swarm Architecture — `SwarmManager` with 3 specialist profiles (Auditor/read-only blue, Tax/categorization green, Data Entry/write-back red). `build_task_plan()` accepts optional `agent_profile` to filter tool registry. `POST /plan-task` returns `assigned_agent` field. Frontend `AgentChatWindow.jsx` renders colored `<AgentBadge>`. 27 backend + 9 frontend tests.
+- **Phase 46A** (complete): Grand Release v1.0.0 — Version harmonized across 7 source files (frontend, backend, config, main, tauri.conf, Cargo.toml, Sidebar.jsx) and 13 test files. New `GET /api/app/release-notes` endpoint returning v1.0.0 changelog with 5 highlights. New `ReleaseNotesModal` component with `localStorage`-gated auto-display, lucide-react icons, and "Got it!" dismiss. 5 backend + 7 frontend tests. Frontend build at 1900 modules.
+- **Phase 46B** (complete): Resource Monitor Dashboard — `psutil`-based system resource tracking (RAM, vector DB size, orphaned Excel processes). New `GET /api/system/resources`, `POST /api/system/optimize/clear-memory`, `POST /api/system/optimize/kill-excel` endpoints in existing system router. `kill_orphaned_excel()` safely terminates Excel processes older than 5 minutes. `clear_vector_memory()` wraps `reset_semantic_memory()`. Frontend `ResourceMonitor.jsx` page at `/app/system` with 3 stat cards, progress bars (green/yellow/red thresholds), confirmation-gated optimize buttons. Nav link in ADVANCED section with Activity icon. 8 backend + 8 frontend tests. Frontend build at 1901 modules.
+- **Phase 46C** (complete): Marketing Blitz & Waitlist Activation — Landing hero subtitle updated to "Autonomous AI Accounting Firm", How It Works gets "Live Voice Editing" as step 4 (Record→5, QuickBooks→6), Features/Badges grid adds "Multi-Agent Swarm" and "Semantic Bank Recon". Landing (`Landing.jsx` + `landing.html`) synced. FAQPage adds "Does OfficePilot work with my existing Excel files?" and "How does the Bank Reconciliation work?". New `GET /api/admin/waitlist/launch-email` endpoint returns a personalized HTML launch email with 5 Phase 45 feature highlights and CTA download button. 4 backend + 8 frontend tests. Frontend build at 1901 modules.
+- **Phase 46D** (complete): Edge-Case QA & Chaos Testing — 6 resilience tests in `tests/test_chaos_resilience.py`: (1) binary garbage bank feed returns empty list, (2) Ollama 502 HTML response falls back to mock provider, (3) COM pivot table TimeoutError triggers `__exit__` (no zombie EXCEL.EXE), (4) empty vector DB returns empty list instead of crashing, (5) QuickBooks `ConnectionError` returns `EXECUTOR_RESULT_FAILED`, (6) `cancel_task` + `_is_cancelled` flag works correctly. 6 backend tests, all pass. Full Phase 46 regression (111 tests) passes. App version 1.0.0 — all 6 phases (A–D) shipped.
 
 ## Phase 33 — Workflow Recorder MVP
 
@@ -178,7 +193,7 @@ Multi-layer safety gate ensuring Gmail integration stays read-only forever. Thre
 | Frontend (22 files) | 372 | ✅ All pass |
 | Frontend build | — | ✅ Success |
 
-App version: **0.36.1** / phase **38.6** (current).
+App version: **1.0.0** / phase **46D** (complete).
 
 ## Phase 38.6 — 6-Task Pilot Enhancement Sprint
 
@@ -1105,3 +1120,620 @@ pilot-release-v0.36.1/
 - `backend/app/routers/local.py` — `/api/local/export-logs` endpoint
 - `frontend/src/api.js` — `exportLogs()` method
 - `frontend/src/pages/LocalAgent.jsx` — Export Logs + Send Feedback buttons
+
+## Phase 39 — Backend Background Daemon & Analytics Engine
+
+Thread-based task runner for autonomous background plan execution, plus an invoice dataset analytics tool.
+
+### New model
+
+`backend/app/models/background_task.py`:
+- `BackgroundTask` — `id` (PK), `user_id` (FK), `command`, `plan_json`, `status` (queued/running/completed/failed/cancelled), `progress_percent`, `current_step_description`, `result_summary_json`, `error_message`, `created_at`, `updated_at`
+
+### New service
+
+`backend/app/services/background_runner.py`:
+- `BackgroundTaskRunner` singleton with thread-based execution via `start_task(task_id)` and `cancel_task(task_id)`.
+- `_run_task` picks up a task from DB, iterates through `plan_json` steps, calls `execute_tool` for each, updates `progress_percent` and `current_step_description` on each step, catches exceptions to mark `failed`, generates `result_summary_json` on completion.
+- Uses `SessionLocal()` from `app.db` for DB access in the worker thread.
+- Checks `_is_cancelled` before each step to support cancellation.
+- Registered in `tool_registry.py` and `agent_tool_executor.py` with `_execute_analyze_invoice_dataset`.
+
+### New tool
+
+`analyze_invoice_dataset` (low risk, no approval):
+- Input: `invoices_data` (list of dicts with vendor/total_amount/date)
+- Output: `total_sum`, `invoice_count`, `largest_amount`, `largest_vendor`, `smallest_amount`, `smallest_vendor`, `average_amount`
+- Supports both `invoices_data` and `invoices` param names, `vendor`/`vendor_name` and `total_amount`/`amount` keys.
+
+### New router
+
+`backend/app/routers/background_tasks.py` at `/api/agent`:
+- `POST /run-background` — accepts `command` + `plan_json`, creates `BackgroundTask` (queued), triggers runner, returns `task_id`.
+- `GET /background-tasks` — list user's tasks (newest first).
+- `GET /background-tasks/{id}` — detail with `result_summary` (polling endpoint).
+- `POST /background-tasks/{id}/cancel` — set status to cancelled (only queued/running).
+
+### Registration
+
+- Added `background_task` to `init_db()` imports in `db.py`.
+- Added `background_tasks_router` import and `app.include_router()` in `main.py`.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| `test_phase39_background.py` | 18 | ✅ All pass (39.3s) |
+
+## Phase 39, Task 2 — Google Drive Read-Only Integration
+
+Read-only Google Drive adapter (mock mode by default) with safety gate blocking write operations, two new tools, and executor functions.
+
+### New service
+
+`backend/app/services/google_drive_adapter.py`:
+- `GoogleDriveAdapter` class with mock mode (8 realistic fake files) and real mode skeleton.
+- `list_recent_files(days_back, keywords)` — returns filtered file list with id/name/mime_type/size/modified_time.
+- `download_file(file_id, target_folder)` — creates a local mock file at `data_dir/drive_downloads/{user_id}/` or custom `target_folder`.
+- `BLOCKED_WRITE_OPERATIONS` frozenset (upload, delete, move, rename, copy, create, etc.) — any call raises `PermissionError`.
+- `_check_real_mode` reads `DRIVE_CLIENT_ID` / `DRIVE_CLIENT_SECRET` env vars with `getattr` fallback for backward compat.
+
+### New tools (tool_registry.py)
+
+| Tool | Risk | Approval | Description |
+|------|------|----------|-------------|
+| `drive_list_recent_files` | low | no | List recent Drive files (params: `days_back`, `keywords`) |
+| `drive_download_file` | low | no | Download file from Drive to local folder (params: `file_id`, `target_folder`) |
+
+### Executors (agent_tool_executor.py)
+
+- `_execute_drive_list_recent_files` — wraps `GoogleDriveAdapter.list_recent_files`, returns file list with count and mode.
+- `_execute_drive_download_file` — wraps `GoogleDriveAdapter.download_file`, returns local path and file metadata.
+
+### Safety gate (accountant_agent.py)
+
+- `DRIVE_READONLY_BLOCKED_PATTERNS` regex (14 patterns) in `classify_task_risk()` runs before email/payment blocked checks. Covers upload, delete, move, rename, copy, create folder, trash, empty trash, sync/backup commands. Returns `drive_write_not_supported` blocked reason.
+
+### Config (config.py)
+
+- Added `drive_client_id` (str) and `drive_client_secret` (str) to Settings dataclass, read from `DRIVE_CLIENT_ID` and `DRIVE_CLIENT_SECRET` env vars.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| `test_phase39_drive.py` | 27 | ✅ All pass (15.2s) |
+| `test_phase39_background.py` | 18 | ✅ All pass (no regression) |
+
+## Phase 39, Task 3 — Planner Wiring & Background Intent Detection
+
+Wired the Drive and Analytics tools into the agent planner, added background intent detection, and auto-creates `BackgroundTask` on approve-plan for background commands.
+
+### Changes
+
+**`accountant_agent.py`**:
+- `BACKGROUND_PATTERNS` regex matches "in the background", "while I work", "automatically", "fire and forget", "do it silently", etc.
+- `_mock_agent_response()` now has an early-return Drive chain branch (before email/Excel intents) that detects "download from google drive" commands and returns the 5-step Drive→Download→Analyze→Excel chain.
+- `_build_mock_steps()` has a new Drive+Analytics chain: `drive_list_recent_files` → `drive_download_file` (×2) → `analyze_invoice_dataset` → `excel_create_summary_from_file`.
+- `build_task_plan()` checks `BACKGROUND_PATTERNS.search(command)` and sets `run_in_background: true` in the plan.
+- `_mock_agent_response()` also sets `run_in_background` in the JSON response.
+
+**`accountant_autopilot.py`**:
+- Propagates `run_in_background` from the plan through `build_accountant_plan()`.
+
+**`agent.py` router**:
+- `approve_plan_with_run()` checks `plan_data.get("run_in_background")` — if true, creates a `BackgroundTask` row (queued), starts the `BackgroundTaskRunner`, and returns `background_task_id` in the response alongside the normal run/step data.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| `test_phase39_planner.py` | 21 | ✅ All pass (25.5s) |
+| All Phase 39 tests | 66 (18+27+21) | ✅ All pass (59.1s) |
+
+### Phase 39, Task 4 — Frontend UX for Background Tasks
+
+**3 new files**:
+- `frontend/src/components/agent/BackgroundTaskWidget.jsx` — polling widget in TopBar, pulsing Loader icon with badge count, dropdown with progress bars, cancel button
+- `frontend/src/components/agent/BackgroundResultCard.jsx` — chat timeline card showing task result (min/max amounts, Open Excel File button)
+- `frontend/tests/backgroundTasks.test.jsx` — 13 component tests
+
+**3 modified files**:
+- `frontend/src/api.js` — `runTaskInBackground`, `getBackgroundTasks`, `cancelBackgroundTask`
+- `frontend/src/pages/AccountantAgent.jsx` — `handleApprovePlan` checks `plan.run_in_background`, shows toast and polls for completion, renders `BackgroundResultCard`
+- `frontend/src/components/layout/TopBar.jsx` — renders `BackgroundTaskWidget` next to Emergency Stop
+
+### Test results (frontend)
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| `backgroundTasks.test.jsx` | 13 | ✅ All pass |
+| All frontend tests (30 files) | 536 | ✅ All pass |
+
+## Phase 39, Task 5 — Tauri OS Notifications & Final Polish
+
+Native OS notifications when background tasks complete, plus completed-task recovery on app restart.
+
+### Changes
+
+**`frontend/src/components/agent/BackgroundTaskWidget.jsx`**:
+- Tracks previous task statuses via `prevTasksRef`.
+- When polling detects a transition from `running`/`queued` to `completed`/`failed`, triggers a notification.
+- Uses `@tauri-apps/plugin-notification` when `window.__TAURI__` is present (desktop mode).
+- Falls back to Web Notification API (`Notification` object) in web/browser mode.
+- Notification body shows: "Processed {count} invoices. Biggest: ${amount}. Click to view."
+- Failure notifications show the error message.
+
+**`frontend/src/pages/AccountantAgent.jsx`**:
+- On app load (`load()` function), fetches completed/failed `BackgroundTask` from the API.
+- Renders any recent completed/failed tasks as `BackgroundResultCard` entries in the chat timeline.
+
+**`desktop/tauri/src-tauri/capabilities/default.json`**:
+- Added `notification:default`, `notification:allow-is-permission-granted`, `notification:allow-request-permission`, `notification:allow-notify` permissions.
+
+**`frontend/package.json`**:
+- Added `@tauri-apps/plugin-notification` ^2.x dependency.
+
+**`docs/PHASE_39_QA.md`** (new):
+- 6-section manual QA checklist covering all Phase 39 features.
+- Step-by-step instructions for background tasks, Drive safety gate, frontend UX, OS notifications, and app-start recovery.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 39) | 66 | ✅ All pass |
+| Frontend (all 30 files) | 536 | ✅ All pass |
+| Frontend build | — | ✅ |
+
+## Phase 40A — Always-On Proactive Watcher Scheduler
+
+DB-backed background scheduler that silently monitors Gmail, Drive, and Local Folders to auto-extract invoices without user intervention.
+
+### New model
+
+`backend/app/models/background_watcher.py`:
+- `BackgroundWatcher` — `id` (PK), `user_id` (FK), `name`, `source_type` (gmail/drive/folder), `config_json`, `schedule_minutes` (default 60), `last_run_at` (nullable), `status` (active/paused/error), `created_at`, `updated_at`.
+
+### New service
+
+`backend/app/services/watcher_scheduler.py`:
+- `WatcherScheduler` singleton with thread-based polling loop checking due watchers every 60s.
+- `_is_due` checks `last_run_at` vs `schedule_minutes`; never-run watchers always trigger.
+- `_execute_watcher` generates predefined read-only plans per source type:
+  - **Gmail**: `email_search` → `email_download_attachments` → `extract_invoice_data`
+  - **Drive**: `drive_list_recent_files` → `drive_download_file` → `extract_invoice_data`
+  - **Folder**: `scan_local_folder` → `extract_invoice_data`
+- Merges user `config_json` (`keywords`, `days_back`) into plan params.
+- Passes validated plan to `BackgroundTaskRunner` for async execution.
+- Updates `last_run_at` on success; sets `status = 'error'` on exception.
+
+### Safety rules
+
+- `_validate_watcher_plan()` checks every step:
+  1. **Risk level check** — tools with `medium`/`high` risk (e.g. `email_download_attachments`, `excel_create_summary_from_file`) get `_needs_approval=True` → task set to `pending_approval`
+  2. **Allowed list check** — tools not in `WATCHER_ALLOWED_TOOLS` (low-risk read-only set) get `_blocked=True` → watcher set to `error` status
+- `WATCHER_ALLOWED_TOOLS`: `email_search`, `email_preview_messages`, `email_save_attachment`, `drive_list_recent_files`, `drive_download_file`, `file_open_folder`, `scan_local_folder`, `extract_invoice_data`
+- `HIGH_RISK_TOOLS`: `excel_create_summary_from_file`, `excel_create_workbook`, `create_daily_invoices_excel`, `browser_open_url`, `browser_click`, `browser_type`, `desktop_click`, `desktop_type`, `email_download_attachments`
+
+### Router
+
+`backend/app/routers/watchers.py` at `/api/watchers`:
+- `GET /` — list user's watchers (newest first)
+- `POST /` — create watcher (name, source_type, config_json, schedule_minutes)
+- `PATCH /{id}` — update name/config/status/schedule (scope to user)
+- `DELETE /{id}` — delete watcher (scope to user)
+- `POST /{id}/run-now` — trigger immediate execution
+
+### Lifecycle
+
+Started in `main.py` lifespan — `WatcherScheduler.get_instance().start()` on boot, `.stop()` on shutdown.
+
+### Frontend
+
+- **WatcherSettings.jsx** at `/watchers`: clean settings page with watcher list, toggle switches (Pause/Resume), Run Now, Delete, and Add Watcher form with source type selector (Mail/HardDrive/Folder icons), keywords config, schedule dropdown, days-back input.
+- **Sidebar.jsx**: Eye icon link in WORKSPACE section.
+- **api.js**: `listWatchers()`, `createWatcher(body)`, `updateWatcher(id, body)`, `deleteWatcher(id)`, `runWatcherNow(id)`.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 40A) | 20 | ✅ All pass |
+| Frontend (Phase 40A) | 10 | ✅ All pass |
+| Frontend (32 files) | 556 | ✅ All pass |
+
+## Phase 40B — Real Local LLM Brain with Ollama
+
+Ollama integration providing a real local LLM brain for task planning, with automatic fallback to mock provider on connection failure.
+
+### Changes
+
+**`app/services/accountant_agent.py`**:
+- `_check_local_llm_reachable(endpoint)` — probes Ollama `/api/tags` with 5s timeout, returns bool.
+- `_build_ollama_system_prompt()` — builds system prompt from `TOOL_REGISTRY` with strict JSON-only format, multilingual instruction, banned actions, and exact JSON schema.
+- `_call_ollama_provider(prompt, context)` — sends to Ollama `/api/generate` with `format: "json"`, temperature 0.1, 120s timeout. Raises `ConnectionError` on HTTP/URL errors.
+- `call_agent_provider()` — routes `provider=="ollama"` to `_call_ollama_provider`, catches `ConnectionError`/`ValueError` → falls back to `_fallback_mock_response`.
+- `get_agent_status()` — returns `status: "connected"` or `"ollama_unreachable"` based on health check.
+
+**`app/config.py`**:
+- `ollama_base_url` (default `http://localhost:11434`) — from `OLLAMA_BASE_URL` env var.
+- `ollama_model` (default `llama3.1`) — from `OLLAMA_MODEL` env var.
+
+**`app/routers/agent.py`**:
+- `GET /api/agent/llm-status` — calls Ollama `/api/tags`, returns `{status, models, base_url}` on success, `{status: "offline", error}` on failure. No auth required (internal status endpoint).
+
+**Frontend — `LocalAgent.jsx`**:
+- "Local AI Brain" section with connection status pill (`Connected`/`Offline`), base URL display, and model list.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 40B) | 17 | ✅ All pass |
+
+## Phase 40C — Autonomous Error Recovery & Self-Correction
+
+Upgrades `BackgroundTaskRunner` with self-healing: if a step fails, it attempts a recovery strategy or pauses to ask the user for clarification.
+
+### Recovery strategies (`RECOVERY_MAP`)
+
+| Error Pattern | Recovery Steps | Fallback |
+|--------------|----------------|----------|
+| `extract_invoice_data:low_confidence` | 1 step: `screen_read_text` with invoice target | Generic clarification question |
+| `extract_invoice_data:not found` | 1 step: `file_find_latest_download` | Ask user for file path |
+| `excel_create_summary_from_file:unsupported` | None (empty list) | Ask user to save as .xlsx/.csv |
+
+### Changes
+
+**`backend/app/models/background_task.py`**:
+- Added `clarification_question` (String(500), nullable) column.
+- `paused_for_input` is a recognized status value alongside queued/running/completed/failed/cancelled.
+
+**`backend/app/services/background_runner.py`**:
+- Wrap `execute_tool` call in try/except; failed/error results enter recovery logic.
+- `_get_recovery_steps(tool_name, error_message)` — matches against `RECOVERY_MAP`, returns recovery steps list or `None`.
+- `_build_clarification_question(tool_name, error_message, params)` — generates user-friendly question from template or generic fallback.
+- Recovery injection: if recovery steps exist, executes them inline. If they succeed, loop continues. If they fail or no recovery exists, sets `status="paused_for_input"` with `clarification_question` and returns.
+
+**`backend/app/routers/background_tasks.py`**:
+- `POST /background-tasks/{id}/answer` — accepts `{"user_answer": "..."}`, validates task exists / belongs to user / is `paused_for_input`, appends a `user_input` step to the plan with the answer, clears `clarification_question`, sets `status="running"`, and starts `BackgroundTaskRunner`.
+
+**Frontend — `BackgroundTaskWidget.jsx`**:
+- `NEEDS_ATTENTION_STATUSES` set with `paused_for_input`.
+- `AlertTriangle` icon from lucide-react colored orange (`#ea580c`).
+- Orange-tinted button with Needs Attention count badge.
+- Dropdown: orange-bordered item with `AlertTriangle` + clarification question in warning box, text input, Send button, and Enter-to-submit. Cancel button visible for paused tasks.
+
+**API** (`api.js`):
+- `answerBackgroundTask(id, userAnswer)` — `POST` to `/background-tasks/{id}/answer`.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 40C) | 15 | ✅ All pass (54.4s) |
+| Frontend (backgroundRecovery) | 10 | ✅ All pass (9.7s) |
+
+## Phase 41 — Semantic Memory & RAG (Local Vector DB)
+
+Local ChromaDB vector database for semantic search across all extracted invoice data, with automatic indexing on extraction.
+
+### New service
+
+`backend/app/services/semantic_memory.py`:
+- `MockEmbeddingFunction` — deterministic CI-safe embeddings via SHA256 hashing (no ML models needed for tests).
+- `SemanticMemory` — singleton service wrapping ChromaDB `PersistentClient` at `data_dir/vector_store/`.
+- `index_invoice(invoice_id, text_content, metadata)` — embeds and stores invoice text + metadata.
+- `semantic_search(query, top_k, user_id)` — returns top K matches with score, metadata, and text excerpt.
+- `get_semantic_memory()` / `reset_semantic_memory()` — singleton lifecycle.
+
+### New tool
+
+`semantic_search_invoices` (low risk, no approval) in `tool_registry.py:1160` + executor:
+
+### Auto-indexing
+
+`_execute_extract_invoice_data` in `agent_tool_executor.py` now calls `_index_extracted_invoice()` after every successful extraction (both demo and real mode), indexing vendor, invoice_no, amount, date, currency, and file_path.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 41) | 16 | ✅ All pass (53.2s) |
+
+## Phase 42 — Continuous Learning & Correction Loop
+
+Feedback loop where the agent learns from user corrections and dynamically injects rules into the Ollama LLM system prompt.
+
+### New model
+
+`backend/app/models/correction_rule.py`:
+- `AccountingCorrectionRule` — `id` (PK), `user_id` (FK), `trigger_vendor_pattern`, `wrong_category` (nullable), `correct_category`, `notes` (nullable), `created_at`.
+
+### New service
+
+`backend/app/services/learning_loop.py`:
+- `record_correction(db, user_id, trigger_vendor, wrong_category, correct_category, notes)` — Creates a new rule.
+- `get_active_rules(db, user_id)` — Returns all rules for the user.
+- `delete_rule(db, rule_id, user_id)` — Deletes a rule scoped to user.
+- `format_rules_for_prompt(rules)` — Formats rules into a strict text block under `### LEARNED CORRECTION RULES (MANDATORY)` header.
+
+### Changes to `accountant_agent.py`
+
+- `_build_ollama_system_prompt()` now accepts `db` and `user_id` parameters. When provided, it fetches the user's active correction rules and injects them into the system prompt under `### LEARNED CORRECTION RULES (MANDATORY)`.
+- `_call_ollama_provider()`, `call_agent_provider()`, and `build_task_plan()` all threaded with optional `db`/`user`/`user_id` parameters to propagate correction rules to the Ollama provider.
+
+### New router
+
+`backend/app/routers/learning.py` at `/api/agent`:
+- `POST /correct` — Accepts `trigger_vendor`, `wrong_category`, `correct_category`. Creates a correction rule.
+- `GET /corrections` — Lists user's correction rules.
+- `DELETE /corrections/{id}` — Deletes a rule.
+
+### Frontend
+
+- **`BackgroundResultCard.jsx`**: Added "Correct This" button (`Edit3` icon from lucide-react) next to largest/smallest vendor entries. Clicking opens an inline form with "Correct category for [Vendor]:" input. Submitting calls `POST /api/agent/correct` and shows "Rule saved ✓" success state. Cancel button hides the form.
+- **`api.js`**: Added `createCorrection()`, `listCorrections()`, `deleteCorrection()` methods.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 42) | 15 | ✅ All pass (25.0s) |
+| Frontend (learningLoop) | 7 | ✅ All pass (4.2s) |
+| No regression (Phase 41 + 40B) | 33 | ✅ All pass (28.7s) |
+
+## Phase 43 — Real Accounting Write-Back (QuickBooks/Xero API)
+
+Real accounting write-back adapters for QuickBooks and Xero (mock by default) with safety-gated high-risk executors, audit logging, and frontend Push to QuickBooks button.
+
+### New service
+
+`backend/app/services/accounting_writeback.py`:
+- `QuickBooksWritebackAdapter` and `XeroWritebackAdapter` with `create_bill()` returning mock success by default.
+- `MOCK_MODE = True` unless `QUICKBOOKS_ENV`/`XERO_ENV` == "production".
+- Mock mode returns a deterministic success response with bill ID, vendor, amount, and status.
+
+### New tools (tool_registry.py)
+
+| Tool | Risk | Approval | Description |
+|------|------|----------|-------------|
+| `quickbooks_create_bill` | high | **yes** | Create a bill in QuickBooks (writeback) |
+| `xero_create_bill` | high | **yes** | Create a bill in Xero (writeback) |
+
+### Executors (agent_tool_executor.py)
+
+- `_execute_quickbooks_create_bill` and `_execute_xero_create_bill` — check safety gate env var `QUICKBOOKS_WRITEBACK_ENABLED`, instantiate adapter, call `create_bill()`, log audit via `_log_writeback_audit()`.
+- `_log_writeback_audit()` — writes audit log with action `accounting.writeback.{provider}.{action}`.
+- Safety gate: `QUICKBOOKS_WRITEBACK_ENABLED` must be "true"/"1"/"yes"/"on" — otherwise returns `EXECUTOR_RESULT_BLOCKED`.
+- High-risk tools already blocked in dry-run mode by existing executor framework (returns `dry_run` status).
+
+### Frontend
+
+- **`BackgroundResultCard.jsx`**: Added `PushToQuickBooksButton` component (`CloudUpload` icon from lucide-react) rendered when task has `total_sum` or `total_amount`. Shows "Push to QuickBooks" → "Pushing..." → back to "Push to QuickBooks" on completion. Calls `onPushToQuickBooks` callback with `vendor_name`, `total_amount`, `line_items`, `due_date`.
+
+### Pre-existing bugs fixed during Phase 43 QA
+
+| Bug | File | Fix |
+|-----|------|------|
+| Broken indentation in `_execute_file_copy_table_to_excel` — dangling `try:`, floating dict keys at wrong indent | `agent_tool_executor.py:2208-2224` | Closed `try` with `except Exception: pass`, fixed dict key indentation to 20-space inside `return {}`, added fallback return |
+| `_log_writeback_audit` had duplicate `except Exception:` blocks and a bogus `return` block referencing undefined `source`/`target`/`params` | `agent_tool_executor.py:2314-2348` | Removed duplicate except, removed bogus return block |
+| `test_high_risk_blocked_in_dry_run_mode` expected `"blocked"` but dry-run short-circuit returns `"dry_run"` before reaching high-risk check | `test_phase43_writeback.py:199-210` | Changed assertion from `"blocked"` to `"dry_run"` |
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 43 writeback) | 10 | ✅ All pass (23.8s) |
+| Frontend (writeback.test.jsx) | 5 | ✅ All pass |
+| Frontend full suite (34 files) | 568 | ✅ All pass |
+
+## Phase 44 — Deep Excel COM Automation via xlwings
+
+Upgrades the Excel engine from basic file manipulation (openpyxl) to full Windows COM Automation using `xlwings`. Controls the actual Excel.exe process for Pivot Tables, complex formatting, workbook switching, and live formula calculation.
+
+### Dependency
+
+`xlwings>=0.33.0` added to `backend/requirements.txt`. xlwings requires Excel to be installed on the Windows machine. Gracefully falls back when xlwings is unavailable.
+
+### New service
+
+`backend/app/services/excel_com_automation.py`:
+- `ExcelComAdapter` — context manager wrapping `xlwings.App(visible=False)`.
+- **VBA macro blocklist**: `_check_vba_safety()` blocks `macro`, `application.run`, `vba`, `runmacro` in any parameter — raises `PermissionError`.
+- **File path safety**: `_is_path_allowed()` blocks `C:\Windows`, `C:\Program Files`, `C:\Program Files (x86)`. Configurable `ALLOWED_DATA_DIRS` override.
+- **Timeout per COM operation**: `_run_with_timeout()` runs each COM call in a daemon thread with configurable timeout (default 60s, via `OFFICEPILOT_COM_TIMEOUT` env var). Raises `TimeoutError` on hang.
+- **Zombie prevention**: `app.quit()` called in `__exit__` finally block; all workbook `close()` calls in finally blocks.
+- Methods:
+  - `create_pivot_table(file_path, data_range, pivot_location, row_fields, value_field)`
+  - `switch_workbook_and_copy(source_path, dest_path, sheet_name)`
+  - `apply_conditional_formatting(file_path, sheet_name, range, rule_type, formula)`
+  - `calculate_and_read_formula(file_path, sheet_name, cell_address)`
+  - `create_chart(file_path, sheet_name, chart_type, data_range, title)`
+
+### Tool registration (tool_registry.py)
+
+| Tool | Risk | Approval | Description |
+|------|------|----------|-------------|
+| `excel_create_pivot_table` | **high** | **yes** | COM-powered pivot table (upgraded from medium) |
+| `excel_switch_workbooks` | medium | yes | Copy sheet between workbooks via COM |
+| `excel_advanced_formatting` | medium | yes | Conditional formatting via COM |
+| `excel_calculate_and_read` | low | no | Force Excel calculation and read result |
+| `excel_create_chart` | medium | yes | Create chart via COM |
+
+### Executors (agent_tool_executor.py)
+
+- 5 new executor functions mapped in `executor_map`, each with:
+  - Path validation against blocked system directories (`_validate_com_file_path`)
+  - Graceful fallback when xlwings/Excel not available
+  - Timeout/PermissionError/Exception handling returning structured `EXECUTOR_RESULT_BLOCKED` or `EXECUTOR_RESULT_FAILED`
+- `COM_TIMEOUT_SECONDS` configurable via `OFFICEPILOT_COM_TIMEOUT` env var (default 60)
+
+### BackgroundTaskRunner update (background_runner.py)
+
+- `COM_TOOLS` frozenset with all 5 COM tool names
+- `COM_TIMEOUT` constant (default 60s)
+- Step execution for COM tools wrapped in a daemon thread with `thread.join(timeout=COM_TIMEOUT)`. If timeout triggers, marks step as `timeout` status
+
+### Frontend
+
+- **AgentPlanCard.jsx**: Shows "Advanced Excel" badge when any plan step uses a COM tool
+- **AccountantAgent.jsx**: Shows warning "This will run advanced Excel operations via COM automation. This may take a few moments." before approve buttons when COM tools are in the plan
+- **BackgroundResultCard.jsx**: Shows "Advanced Excel" badge when result contains pivot table or chart data
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 44 COM) | 45 | ✅ All pass (18.3s) |
+| Frontend (writeback + backgroundTasks + sidebarConsistency) | 38 | ✅ All pass |
+| Frontend build | — | ✅ |
+
+## Phase 45A — Automated Bank Reconciliation
+
+Semantic-memory-powered bank reconciliation with COM-powered Excel reporting.
+
+### New service
+
+`backend/app/services/bank_reconciliation.py`:
+- `BankFeedAdapter.parse_feed(file_path)` — parses CSV/JSON bank feed files into `BankTransaction` list. Mock mode generates 5 realistic transactions.
+- `ReconciliationEngine.reconcile(bank_transactions, extracted_invoices, user_id)` — uses `SemanticMemory.semantic_search()` for initial matching (score clamped to [0,1]). Falls back to exact-match scoring against provided `extracted_invoices` using vendor name overlap and amount comparison.
+- `generate_reconciliation_excel(records, output_path)` — uses `ExcelComAdapter` COM when available (for conditional formatting via Excel object model), falls back to `openpyxl PatternFill`. Green/yellow/red conditional formatting on Status column.
+
+### Confidence tiers
+
+| Score | Status | Description |
+|-------|--------|-------------|
+| >= 0.8 | `matched` | High confidence match via semantic memory or exact-match |
+| 0.5–0.8 | `fuzzy_match` | Partial match — needs human review |
+| < 0.5 | `unmatched` | No matching invoice found |
+
+### New tools (tool_registry.py)
+
+| Tool | Risk | Approval | Description |
+|------|------|----------|-------------|
+| `bank_parse_feed` | low | no | Parse bank feed CSV/JSON to structured transactions |
+| `bank_reconcile_and_report` | medium | **yes** | Reconcile bank transactions against invoices and generate Excel report |
+
+### Executors (agent_tool_executor.py)
+
+- `_execute_bank_parse_feed` — wraps `BankFeedAdapter.parse_feed()`, returns transaction count + list.
+- `_execute_bank_reconcile_and_report` — wraps `ReconciliationEngine.reconcile()` + `generate_reconciliation_excel()`, returns status counts + output path.
+
+### Router endpoints (2 new)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/agent/bank/parse` | POST | Parse uploaded bank feed file |
+| `/api/agent/bank/reconcile` | POST | Run reconciliation and generate Excel report |
+
+Added at bottom of `app/routers/agent.py`. Both endpoints wrap `execute_tool` directly (same pattern as `/folder-invoice/scan` and `/folder-invoice/create-excel`).
+
+### Frontend
+
+- **BankReconciliation.jsx** at `/app/reconciliation`: file upload area, parsed-transactions table with date/description/amount/type columns, "Run Bank Reconciliation" button, summary stats cards (total, matched, unmatched, fuzzy), "Download Excel Report" button.
+- **Sidebar.jsx**: "Reconciliation" nav link with Scale icon in WORKSPACE section.
+- **api.js**: `bankParseFeed()` and `bankReconcile()` methods.
+
+### Key decisions
+
+- `ReconciliationEngine` uses `SemanticMemory.semantic_search` for initial matching; score clamped to `max(0.0, min(1.0, score))`. Falls back to exact-match scoring when search confidence < 0.5.
+- `generate_reconciliation_excel` tries COM first (conditional formatting with Excel object model), falls back to openpyxl PatternFill (green `C6EFCE`/`006100`, yellow `FFEB9C`/`9C6500`, red `FFC7CE`/`9C0006`).
+- `BANK_FEED_MODE` env var controls mock mode (default "mock").
+- Output path defaults to `data_dir/exports/reconciliation/reconciliation_{timestamp}.xlsx`.
+- Routes bypass the run/step workflow for simplicity (same pattern as Phase 25 folder-invoice endpoints).
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 45A reconciliation) | 24 | ✅ All pass |
+| Frontend (bankReconciliation) | 9 | ✅ All pass |
+| Frontend build | — | ✅ |
+
+## Phase 45B — Voice-Driven Live Excel Editing (Active Workbook COM)
+
+COM automation upgrade to connect to the ACTIVE visible Excel instance, enabling real-time voice-driven editing with safety undo snapshots.
+
+### Changes
+
+`backend/app/services/excel_com_automation.py`:
+- `connect_to_active_workbook()` — uses `xw.apps.active` instead of `xw.App()` to hook into the user's visible Excel process. Sets `app.screen_updating = False` for speed. Saves a temporary undo snapshot (`_save_active_snapshot()`) via `LIVE_EDIT_SNAPSHOT_DIR` config before any write.
+- `execute_live_command(command_type, params)` — routes 12 command types to the `active_workbook`:
+  - **Write operations** (auto-undo-snapshot before each): `format_range`, `set_value`, `write_values`, `apply_formula`, `clear_range`, `conditional_format`, `insert_pivot`, `insert_chart`
+  - **Read operations**: `read_range`, `get_active_cell`, `list_sheets`, `activate_sheet`
+- VBA macro blocklist enforced on all params before execution.
+- `_parse_color()` helper converts hex colors (`#FF0000`) to Excel COM BGR int format.
+
+### Tool registration
+
+`tool_registry.py`:
+- `excel_live_edit_active_workbook` (risk: high, approval: YES, snapshot: YES)
+- input_schema with 12 `command_type` enum + `params` object
+
+### Executor
+
+`agent_tool_executor.py: _execute_excel_live_edit_active_workbook`:
+- Creates `ExcelComAdapter()`, calls `connect_to_active_workbook()`, then `execute_live_command()`.
+- Returns workbook_name, command_type, live_result, snapshot_path, undo_available.
+- Handles RuntimeError (no active Excel), TimeoutError, PermissionError.
+
+### Voice intent detection
+
+`accountant_autopilot.py: build_accountant_plan()`:
+- `LIVE_EXCEL_PATTERNS` regex detects 10+ phrases (English + Roman Urdu) before LLM-first planning.
+- Returns a `live_excel_edit` plan with high risk, requires approval, and a single `excel_live_edit_active_workbook` step.
+
+### Frontend
+
+`TopBar.jsx`:
+- "Live Excel Mode" toggle button with `MousePointerClick` SVG icon (cursor arrow).
+- When active: red border/accent, red pulsing dot animation (`live-excel-pulse` keyframe).
+- Title tooltip: "Live Excel Mode active — voice commands will directly edit your open file. Press Ctrl+Z to undo."
+- CSS in `topbar.css`: `.live-excel-toggle`, `.live-excel-toggle--active`, `.live-excel-dot` classes.
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 45B live excel) | 37 | ✅ All pass (16.9s) |
+| Frontend build | 1899 modules | ✅ 5.95s |
+
+## Phase 45C — Multi-Agent Swarm Architecture
+
+Three specialist agent profiles — Auditor (read-only), Tax (categorization), Data Entry (write-back) — each filtered to only their allowed tools.
+
+### New service
+
+`backend/app/services/agent_swarm.py`:
+- `SPECIALIST_PROFILES` dict with 3 profiles:
+  - **auditor** (blue): 73 read-only tools, restricted to screen/desktop/file/email read-only + semantic search
+  - **tax** (green): 52 tools including Excel categorization + bank reconciliation
+  - **data_entry** (red): 14 write-back tools (QuickBooks, Xero, Excel COM, browser fill, desktop type)
+- `SwarmManager.classify_and_route(command)` — regex-based routing: auditor patterns > data_entry patterns > tax patterns > general fallback
+- `execute_swarm_task(db, user_id, command, context, mode)` — classifies command, retrieves profile, passes `allowed_tools` to `build_task_plan()`
+- `list_agent_profiles()` — returns all 3 profiles with name/color/icon/tool_count/description
+
+### Changes to existing files
+
+**`accountant_agent.py`**:
+- `build_task_plan()` accepts `agent_profile: dict | None` — prepends `system_prompt_additions` to prompt, passes `allowed_tools` to `call_agent_provider`.
+- `call_agent_provider()` accepts `allowed_tools: list[str] | None` — passes to `_build_ollama_system_prompt()`.
+- `_build_ollama_system_prompt()` accepts `allowed_tools: list[str] | None` — when provided, only those tools appear in the LLM system prompt.
+
+**`routers/agent.py`**:
+- `POST /plan-task` response includes `"assigned_agent": "auditor" | "tax" | "data_entry" | "general"` — populated by `SwarmManager.classify_and_route()`.
+- `GET /api/agent/profiles` — new endpoint returning all specialist profiles.
+
+**Frontend — `AgentChatWindow.jsx`**:
+- `<AgentBadge>` component renders colored badge (blue `#dbeafe`/`#1e40af` for auditor, green `#dcfce7`/`#166534` for tax, red `#fee2e2`/`#991b1b` for data entry, indigo `#e0e7ff`/`#3730a3` for general).
+
+### Test results
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| Backend (Phase 45C swarm) | 27 | ✅ All pass (34.7s) |
+| Frontend (agentSwarm) | 9 | ✅ All pass |
+| Frontend full suite (36 files) | 586 | ✅ All pass |
+| Frontend build | 1899 modules | ✅ 6.51s |

@@ -7,6 +7,9 @@ dist/
 .env
 .venv/
 venv/
+.pytest_cache/
+*.pyc
+*.pyo
 
 # ── Node ────────────────────────────────────────────────────────
 node_modules/
@@ -25,6 +28,7 @@ desktop/tauri/src-tauri/binaries/
 
 # ── Runtime data (not committed) ────────────────────────────────
 *.db
+*.sqlite
 data/
 storage/
 backend/static/releases/
@@ -37,6 +41,8 @@ pilot-release-*/
 *.msi
 *.zip
 *.exe
+*.dmg
+*.app
 
 # ── Secrets & signing material ──────────────────────────────────
 .updater-private-key.pem
@@ -45,3 +51,12 @@ pilot-release-*/
 # ── OS ──────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# ── Temp / cache ────────────────────────────────────────────────
+*.tmp
+*.temp
+.cache/
+
+# ── Benchmark / CSV output ──────────────────────────────────────
+parser_benchmark.csv

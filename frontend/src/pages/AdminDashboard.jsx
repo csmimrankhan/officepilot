@@ -64,7 +64,7 @@ export default function AdminDashboard() {
       <div className="admin-dashboard-grid">
         <AdminMetricCard label="System Health" value={health ? 'Operational' : 'Unknown'} icon="🩺" color={health ? '#16a34a' : '#d97706'} subtitle={health ? `v${health.version || '—'}` : 'Unable to check'} onClick={() => navigate('/admin/system-health')} />
         <AdminMetricCard label="AI / Cloud Status" value={aiStatus?.agent_provider === 'mock' ? 'Local Only' : aiStatus?.agent_provider || 'Unknown'} icon="🧠" color={aiStatus?.agent_provider === 'mock' ? '#16a34a' : '#d97706'} subtitle={aiStatus?.zero_cloud_by_default ? 'Zero cloud by default' : 'Cloud AI disabled'} onClick={() => navigate('/admin/ai-status')} />
-        <AdminMetricCard label="Latest Version" value={health?.version || '0.36.1'} icon="📦" color="#2563eb" subtitle={`Phase ${health?.phase || '37'}`} />
+        <AdminMetricCard label="Latest Version" value={health?.version || '1.0.0'} icon="📦" color="#2563eb" subtitle={`Phase ${health?.phase || '37'}`} />
         <AdminMetricCard label="Recent Logins (7d)" value={recentLogins} icon="🔑" color="#d97706" subtitle={`${totalUsers > 0 ? Math.round(recentLogins / totalUsers * 100) : 0}% active this week`} />
       </div>
 

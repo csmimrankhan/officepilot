@@ -183,6 +183,9 @@ def _settings_singleton() -> "Settings":
         ),
         xero_env=os.environ.get("XERO_ENV", "mock").lower(),
         xero_scopes=os.environ.get("XERO_SCOPES", "mock").lower(),
+        # Phase 39 — Google Drive read-only.
+        drive_client_id=os.environ.get("DRIVE_CLIENT_ID", ""),
+        drive_client_secret=os.environ.get("DRIVE_CLIENT_SECRET", ""),
         # Phase 14 — workflow recording.
         workflow_recording_enabled=os.environ.get(
             "WORKFLOW_RECORDING_ENABLED", "false"
@@ -290,6 +293,9 @@ def _settings_singleton() -> "Settings":
         in ("1", "true", "yes", "on"),
         # Phase 38.5 — Local LLM (Ollama / Llama.cpp).
         local_llm_endpoint=os.environ.get("LOCAL_LLM_ENDPOINT", "http://localhost:11434/v1"),
+        # Phase 40B — Ollama-specific config.
+        ollama_base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+        ollama_model=os.environ.get("OLLAMA_MODEL", "llama3.1"),
         # Phase 23 — Voice Approval.
         voice_approval_enabled=os.environ.get("VOICE_APPROVAL_ENABLED", "false").lower()
         in ("1", "true", "yes", "on"),
@@ -332,7 +338,7 @@ def _settings_singleton() -> "Settings":
         allow_billing_bypass=os.environ.get("ALLOW_BILLING_BYPASS", "true").lower()
         in ("1", "true", "yes", "on"),
         # Phase 35 — App current version.
-        app_version=os.environ.get("OFFICEPILOT_APP_VERSION", "0.36.1"),
+        app_version=os.environ.get("OFFICEPILOT_APP_VERSION", "1.0.0"),
         # Phase 27 — Windows Voice Layer.
         voice_layer_enabled=os.environ.get("VOICE_LAYER_ENABLED", "true").lower() in ("1", "true", "yes", "on"),
         voice_mode_default=os.environ.get("VOICE_MODE_DEFAULT", "dictation"),
@@ -406,6 +412,9 @@ class Settings:
     xero_redirect_uri: str
     xero_env: str
     xero_scopes: str
+    # Phase 39 — Google Drive read-only.
+    drive_client_id: str
+    drive_client_secret: str
     # Phase 14 — workflow recording.
     workflow_recording_enabled: bool
     recording_screenshots_enabled: bool
@@ -523,6 +532,10 @@ class Settings:
 
     # Phase 38.5 — Local LLM (Ollama / Llama.cpp).
     local_llm_endpoint: str
+
+    # Phase 40B — Ollama-specific config.
+    ollama_base_url: str
+    ollama_model: str
 
     # Phase 27 — Windows Voice Layer.
     voice_layer_enabled: bool

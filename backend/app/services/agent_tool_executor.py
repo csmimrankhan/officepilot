@@ -11,6 +11,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
+from .excel_com_automation import ExcelComAdapter
 from .tool_registry import get_tool
 from .browser_automation import get_adapter, reset_adapter
 from .browser_session_service import (
@@ -170,6 +171,9 @@ STEP_TYPE_TOOL_MAP = {
     "audit_log": "audit_log",
     "snapshot_create": "snapshot_create",
     "sensitive_redact": "sensitive_redact",
+    # Phase 39: Google Drive tools
+    "drive_list_recent_files": "drive_list_recent_files",
+    "drive_download_file": "drive_download_file",
     # Legacy aliases (backward compat)
     "read_current_screen": "screen_read_text",
     "click_approved_target": "desktop_click",
@@ -394,6 +398,28 @@ def execute_tool(tool_name: str, params: dict, mode: str, db: Session, user) -> 
         "audit_log": _execute_audit_log,
         "snapshot_create": _execute_snapshot_create,
         "sensitive_redact": _execute_sensitive_redact,
+        # Phase 39: Analytics tools
+        "analyze_invoice_dataset": _execute_analyze_invoice_dataset,
+        # Phase 41: Semantic memory tools
+        "semantic_search_invoices": _execute_semantic_search_invoices,
+        # Phase 39: Google Drive tools
+        "drive_list_recent_files": _execute_drive_list_recent_files,
+        "drive_download_file": _execute_drive_download_file,
+        # Phase 43: Accounting Write-Back tools
+        "quickbooks_create_bill": _execute_quickbooks_create_bill,
+        "xero_create_bill": _execute_xero_create_bill,
+        # Phase 44: Excel COM Automation tools
+        "excel_create_pivot_table": _execute_excel_com_pivot_table,
+        "excel_switch_workbooks": _execute_excel_com_switch_workbooks,
+        "excel_advanced_formatting": _execute_excel_com_advanced_formatting,
+        "excel_calculate_and_read": _execute_excel_com_calculate_and_read,
+        "excel_create_chart": _execute_excel_com_create_chart,
+        # Phase 45A: Bank Reconciliation tools
+        "bank_parse_feed": _execute_bank_parse_feed,
+        "bank_reconcile_and_report": _execute_bank_reconcile_and_report,
+        # Phase 45B: Live Excel editing
+        "excel_live_edit_active_workbook": _execute_excel_live_edit_active_workbook,
+
     }
 
     fn = executor_map.get(tool_name)
@@ -637,6 +663,8 @@ def _execute_extract_invoice_data(params: dict, db: Session, user) -> dict:
             {"vendor": "Demo Corp", "invoice_no": "INV-DEMO-001", "amount": 1250.00, "date": date.today().isoformat()},
             {"vendor": "Sample Ltd", "invoice_no": "INV-DEMO-002", "amount": 3400.50, "date": date.today().isoformat()},
         ]
+        for row in rows:
+            _index_extracted_invoice(row, filepath, user)
         return {
             "status": EXECUTOR_RESULT_OK,
             "message": f"Extracted {len(rows)} invoices in demo mode",
@@ -658,12 +686,14 @@ def _execute_extract_invoice_data(params: dict, db: Session, user) -> dict:
             "warnings": inv.warnings,
             "status": inv.status,
         }
-        return {
+        result = {
             "status": EXECUTOR_RESULT_OK,
             "message": f"Extracted invoice from {filepath}: {inv.vendor} - {inv.total_amount}",
             "output": {"rows": [row], "mode": "real", "filepath": filepath},
             "audit_required": True,
         }
+        _index_extracted_invoice(row, filepath, user)
+        return result
     except Exception as e:
         return {
             "status": EXECUTOR_RESULT_FAILED,
@@ -672,6 +702,42 @@ def _execute_extract_invoice_data(params: dict, db: Session, user) -> dict:
             "audit_required": True,
             "error_message": str(e),
         }
+
+
+def _index_extracted_invoice(row: dict, filepath: str, user) -> None:
+    try:
+        from .semantic_memory import get_semantic_memory
+        text_parts = [
+            row.get("vendor", "") or "",
+            row.get("invoice_no", "") or "",
+            str(row.get("amount", "")) or "",
+            row.get("date", "") or "",
+            row.get("currency", "") or "",
+            filepath,
+        ]
+        text_content = " ".join(text_parts).strip()
+        if not text_content:
+            return
+        user_id = getattr(user, "id", None) if user is not None else None
+        metadata = {
+            "vendor": row.get("vendor", "") or "",
+            "invoice_no": row.get("invoice_no", "") or "",
+            "amount": float(row["amount"]) if row.get("amount") else 0.0,
+            "date": row.get("date", "") or "",
+            "currency": row.get("currency", "") or "",
+            "file_path": filepath,
+            "user_id": user_id,
+        }
+        if user_id is not None:
+            metadata["user_id"] = user_id
+        sm = get_semantic_memory()
+        sm.index_invoice(
+            invoice_id=row.get("invoice_no", filepath),
+            text_content=text_content,
+            metadata=metadata,
+        )
+    except Exception as e:
+        logger.warning("Failed to index invoice in semantic memory: %s", e)
 
 
 def _execute_open_folder(params: dict, db: Session, user) -> dict:
@@ -1696,8 +1762,6 @@ def _execute_browser_wait_for_download(params: dict, db: Session, user) -> dict:
                                 "mode": "playwright",
                                 "guided_mode": bool(session.guided_mode),
                             },
-                            "audit_required": True,
-                            "snapshot_created": True,
                         }
                     return {
                         "status": EXECUTOR_RESULT_OK,
@@ -2158,7 +2222,6 @@ def _execute_file_copy_table_to_excel(params: dict, db: Session, user) -> dict:
     source = params.get("source", params.get("from", "clipboard"))
     target = params.get("target", params.get("filepath", ""))
 
-    # Try to use real excel_tools if available
     try:
         from . import excel_tools as et
         if target:
@@ -2176,11 +2239,426 @@ def _execute_file_copy_table_to_excel(params: dict, db: Session, user) -> dict:
 
     return {
         "status": EXECUTOR_RESULT_OK,
-        "message": f"Table from {source} copied to Excel" + (f" ({target})" if target else ""),
-        "output": {"source": source, "filepath": target, "copied": True, "rows": len(params.get("rows", []))},
-        "audit_required": True,
-        "snapshot_created": True,
+        "message": f"Table copied to clipboard",
+        "output": {"rows": len(params.get("rows", [])), "source": source, "target": target},
     }
+
+
+# ── Phase 43: Accounting Write-Back Executors ─────────────────────────────────
+
+
+WRITEBACK_SAFETY_GATE_ENV = "QUICKBOOKS_WRITEBACK_ENABLED"
+
+
+def _execute_quickbooks_create_bill(params: dict, db: Session, user) -> dict:
+    if os.environ.get(WRITEBACK_SAFETY_GATE_ENV, "").lower() not in ("1", "true", "yes", "on"):
+        err_msg = f"QuickBooks writeback blocked: set {WRITEBACK_SAFETY_GATE_ENV}=true to enable"
+        logger.warning(err_msg)
+        return {
+            "status": EXECUTOR_RESULT_BLOCKED,
+            "message": err_msg,
+            "output": {"blocked": True, "reason": "writeback_safety_gate"},
+            "audit_required": True,
+            "error_message": err_msg,
+        }
+
+    vendor_name = params.get("vendor_name", "Unknown Vendor")
+    line_items = params.get("line_items", [])
+    total_amount = float(params.get("total_amount", 0))
+    due_date = params.get("due_date", "")
+
+    from .accounting_writeback import QuickBooksWritebackAdapter
+
+    adapter = QuickBooksWritebackAdapter()
+    result = adapter.create_bill(
+        vendor_name=vendor_name,
+        line_items=line_items,
+        total_amount=total_amount,
+        due_date=due_date or None,
+    )
+
+    _log_writeback_audit(db, user, "quickbooks", "create_bill", vendor_name, total_amount, result)
+
+    return {
+        "status": EXECUTOR_RESULT_OK,
+        "message": f"QuickBooks bill created for {vendor_name} (${total_amount:.2f})",
+        "output": result,
+        "audit_required": True,
+    }
+
+
+def _execute_xero_create_bill(params: dict, db: Session, user) -> dict:
+    if os.environ.get(WRITEBACK_SAFETY_GATE_ENV, "").lower() not in ("1", "true", "yes", "on"):
+        err_msg = f"Xero writeback blocked: set {WRITEBACK_SAFETY_GATE_ENV}=true to enable"
+        logger.warning(err_msg)
+        return {
+            "status": EXECUTOR_RESULT_BLOCKED,
+            "message": err_msg,
+            "output": {"blocked": True, "reason": "writeback_safety_gate"},
+            "audit_required": True,
+            "error_message": err_msg,
+        }
+
+    vendor_name = params.get("vendor_name", "Unknown Vendor")
+    line_items = params.get("line_items", [])
+    total_amount = float(params.get("total_amount", 0))
+    due_date = params.get("due_date", "")
+
+    from .accounting_writeback import XeroWritebackAdapter
+
+    adapter = XeroWritebackAdapter()
+    result = adapter.create_bill(
+        vendor_name=vendor_name,
+        line_items=line_items,
+        total_amount=total_amount,
+        due_date=due_date or None,
+    )
+
+    _log_writeback_audit(db, user, "xero", "create_bill", vendor_name, total_amount, result)
+
+    return {
+        "status": EXECUTOR_RESULT_OK,
+        "message": f"Xero bill created for {vendor_name} (${total_amount:.2f})",
+        "output": result,
+        "audit_required": True,
+    }
+
+
+def _log_writeback_audit(
+    db: Session,
+    user,
+    provider: str,
+    action: str,
+    vendor_name: str,
+    total_amount: float,
+    result: dict,
+) -> None:
+    try:
+        from .audit import log_action
+
+        log_action(
+            db=db,
+            actor=str(getattr(user, "email", user)) if user else "system",
+            action=f"accounting.writeback.{provider}.{action}",
+            entity_type="accounting_writeback",
+            entity_id=None,
+            details=f"{provider}: create bill for {vendor_name} (${total_amount:.2f})",
+            extra={"result": result, "provider": provider, "vendor_name": vendor_name, "total_amount": total_amount},
+        )
+        db.commit()
+    except Exception:
+        logger.exception("Failed to record writeback audit log")
+        db.rollback()
+
+
+# ── Phase 45A: Bank Reconciliation Executors ────────────────────────────────────
+
+
+def _execute_bank_parse_feed(params: dict, db: Session, user) -> dict:
+    file_path = params.get("file_path", "")
+    content = params.get("content", "")
+    filename = params.get("filename", "feed.csv")
+    from .bank_reconciliation import BankFeedAdapter
+    adapter = BankFeedAdapter()
+    if content:
+        transactions = adapter.parse_feed_text(content, filename)
+    elif file_path:
+        transactions = adapter.parse_feed(file_path)
+    else:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "file_path or content is required", "output": {}}
+    txns = [{"date": t.date, "description": t.description, "amount": t.amount, "type": t.txn_type} for t in transactions]
+    return {
+        "status": EXECUTOR_RESULT_OK,
+        "message": f"Parsed {len(transactions)} bank transactions",
+        "output": {"transactions": txns, "count": len(transactions)},
+        "audit_required": True,
+    }
+
+
+def _execute_bank_reconcile_and_report(params: dict, db: Session, user) -> dict:
+    transactions_data = params.get("transactions", params.get("transactions_data", []))
+    output_path = params.get("output_path", "")
+    user_id = getattr(user, "id", None) if user else None
+    if not transactions_data:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "transactions data is required", "output": {}}
+    if not output_path:
+        from ..config import get_settings
+        s = get_settings()
+        output_dir = s.data_dir / "exports" / "reconciliation"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = str(output_dir / f"reconciliation_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx")
+
+    from .bank_reconciliation import BankTransaction, ReconciliationEngine, generate_reconciliation_excel
+    from .semantic_memory import get_semantic_memory
+
+    sm = get_semantic_memory()
+    engine = ReconciliationEngine(semantic_memory=sm)
+
+    bank_txns = [BankTransaction(t["date"], t["description"], float(t["amount"]), t.get("type", "debit")) for t in transactions_data]
+
+    extracted_invoices = params.get("extracted_invoices", None)
+    records = engine.reconcile(bank_txns, extracted_invoices=extracted_invoices, user_id=user_id)
+
+    result = generate_reconciliation_excel(records, output_path)
+
+    summary = {
+        "total": len(records),
+        "matched": sum(1 for r in records if r.status == "matched"),
+        "fuzzy_match": sum(1 for r in records if r.status == "fuzzy_match"),
+        "unmatched": sum(1 for r in records if r.status == "unmatched"),
+        "output_path": output_path,
+        "com": result.get("com", False),
+    }
+
+    return {
+        "status": EXECUTOR_RESULT_OK if result["status"] == "ok" else EXECUTOR_RESULT_FAILED,
+        "message": f"Reconciliation complete: {summary['matched']} matched, {summary['fuzzy_match']} fuzzy, {summary['unmatched']} unmatched",
+        "output": {
+            "summary": summary,
+            "records": [{
+                "bank_date": r.bank_date,
+                "bank_description": r.bank_description,
+                "bank_amount": r.bank_amount,
+                "bank_type": r.bank_type,
+                "matched_vendor": r.matched_vendor,
+                "invoice_amount": r.invoice_amount,
+                "confidence": r.confidence,
+                "status": r.status,
+            } for r in records],
+            "file_path": output_path,
+        },
+        "audit_required": True,
+        "snapshot_required": True,
+    }
+
+
+# ── Phase 44: Excel COM Automation Executors (xlwings) ─────────────────────────
+
+
+COM_TIMEOUT_SECONDS = int(os.environ.get("OFFICEPILOT_COM_TIMEOUT", "60"))
+
+
+def _get_excel_com_adapter() -> ExcelComAdapter:
+    return ExcelComAdapter(visible=False, timeout=COM_TIMEOUT_SECONDS)
+
+
+def _validate_com_file_path(file_path: str) -> None:
+    if not file_path:
+        raise ValueError("file_path is required")
+    s = get_settings()
+    data_dir = str(s.data_dir)
+    path_lower = file_path.lower()
+    blocked_prefixes = [
+        "c:\\windows",
+        "c:\\windows\\system32",
+        "c:\\program files",
+        "c:\\program files (x86)",
+    ]
+    for prefix in blocked_prefixes:
+        if path_lower.startswith(prefix):
+            raise PermissionError(f"File path '{file_path}' is in a blocked system directory")
+    if not path_lower.startswith(data_dir.lower()) and not os.path.isabs(file_path):
+        raise PermissionError(f"File path '{file_path}' must be absolute or within data directory")
+
+
+def _execute_excel_com_pivot_table(params: dict, db: Session, user) -> dict:
+    file_path = params.get("file_path", "")
+    data_range = params.get("data_range", "A1:Z100")
+    pivot_location = params.get("pivot_location", "A1")
+    row_fields = params.get("row_fields", [])
+    value_field = params.get("value_field", "")
+    if not file_path:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "file_path is required", "output": {}}
+    try:
+        _validate_com_file_path(file_path)
+        adapter = _get_excel_com_adapter()
+        with adapter as com:
+            if not com.available:
+                return {
+                    "status": EXECUTOR_RESULT_FAILED,
+                    "message": "Excel COM automation is not available. xlwings or Excel is not installed. Use openpyxl-based tools instead.",
+                    "output": {"fallback": True},
+                }
+            result = com.create_pivot_table(file_path, data_range, pivot_location, row_fields, value_field)
+            return {
+                "status": EXECUTOR_RESULT_OK,
+                "message": result["message"],
+                "output": result,
+                "audit_required": True,
+                "snapshot_created": True,
+            }
+    except TimeoutError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"timeout": True}}
+    except PermissionError as e:
+        return {"status": EXECUTOR_RESULT_BLOCKED, "message": str(e), "output": {"blocked": True}}
+    except Exception as e:
+        logger.exception("Excel COM pivot table failed")
+        return {"status": EXECUTOR_RESULT_FAILED, "message": f"COM error: {e}", "output": {}}
+
+
+def _execute_excel_com_switch_workbooks(params: dict, db: Session, user) -> dict:
+    source_path = params.get("source_path", "")
+    dest_path = params.get("dest_path", "")
+    sheet_name = params.get("sheet_name", "")
+    if not source_path or not dest_path:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "source_path and dest_path are required", "output": {}}
+    try:
+        _validate_com_file_path(source_path)
+        _validate_com_file_path(dest_path)
+        adapter = _get_excel_com_adapter()
+        with adapter as com:
+            if not com.available:
+                return {"status": EXECUTOR_RESULT_FAILED, "message": "Excel COM not available", "output": {}}
+            result = com.switch_workbook_and_copy(source_path, dest_path, sheet_name)
+            return {
+                "status": EXECUTOR_RESULT_OK,
+                "message": result["message"],
+                "output": result,
+                "audit_required": True,
+                "snapshot_created": True,
+            }
+    except TimeoutError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"timeout": True}}
+    except PermissionError as e:
+        return {"status": EXECUTOR_RESULT_BLOCKED, "message": str(e), "output": {"blocked": True}}
+    except Exception as e:
+        logger.exception("Excel COM switch workbooks failed")
+        return {"status": EXECUTOR_RESULT_FAILED, "message": f"COM error: {e}", "output": {}}
+
+
+def _execute_excel_com_advanced_formatting(params: dict, db: Session, user) -> dict:
+    file_path = params.get("file_path", "")
+    sheet_name = params.get("sheet_name", "")
+    range_addr = params.get("range", "")
+    rule_type = params.get("rule_type", "1")
+    formula = params.get("formula", "")
+    if not file_path or not range_addr:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "file_path and range are required", "output": {}}
+    try:
+        _validate_com_file_path(file_path)
+        adapter = _get_excel_com_adapter()
+        with adapter as com:
+            if not com.available:
+                return {"status": EXECUTOR_RESULT_FAILED, "message": "Excel COM not available", "output": {}}
+            result = com.apply_conditional_formatting(file_path, sheet_name, range_addr, rule_type, formula)
+            return {
+                "status": EXECUTOR_RESULT_OK,
+                "message": result["message"],
+                "output": result,
+                "audit_required": True,
+                "snapshot_created": True,
+            }
+    except TimeoutError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"timeout": True}}
+    except PermissionError as e:
+        return {"status": EXECUTOR_RESULT_BLOCKED, "message": str(e), "output": {"blocked": True}}
+    except Exception as e:
+        logger.exception("Excel COM advanced formatting failed")
+        return {"status": EXECUTOR_RESULT_FAILED, "message": f"COM error: {e}", "output": {}}
+
+
+def _execute_excel_com_calculate_and_read(params: dict, db: Session, user) -> dict:
+    file_path = params.get("file_path", "")
+    sheet_name = params.get("sheet_name", "")
+    cell_address = params.get("cell", "")
+    if not file_path or not cell_address:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "file_path and cell are required", "output": {}}
+    try:
+        _validate_com_file_path(file_path)
+        adapter = _get_excel_com_adapter()
+        with adapter as com:
+            if not com.available:
+                return {"status": EXECUTOR_RESULT_FAILED, "message": "Excel COM not available", "output": {}}
+            result = com.calculate_and_read_formula(file_path, sheet_name, cell_address)
+            return {
+                "status": EXECUTOR_RESULT_OK,
+                "message": result["message"],
+                "output": result,
+                "audit_required": True,
+                "snapshot_created": False,
+            }
+    except TimeoutError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"timeout": True}}
+    except PermissionError as e:
+        return {"status": EXECUTOR_RESULT_BLOCKED, "message": str(e), "output": {"blocked": True}}
+    except Exception as e:
+        logger.exception("Excel COM calculate failed")
+        return {"status": EXECUTOR_RESULT_FAILED, "message": f"COM error: {e}", "output": {}}
+
+
+def _execute_excel_com_create_chart(params: dict, db: Session, user) -> dict:
+    file_path = params.get("file_path", "")
+    sheet_name = params.get("sheet_name", "")
+    chart_type = int(params.get("chart_type", 1))
+    data_range = params.get("data_range", "")
+    title = params.get("title", "Chart")
+    if not file_path or not data_range:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "file_path and data_range are required", "output": {}}
+    try:
+        _validate_com_file_path(file_path)
+        adapter = _get_excel_com_adapter()
+        with adapter as com:
+            if not com.available:
+                return {"status": EXECUTOR_RESULT_FAILED, "message": "Excel COM not available", "output": {}}
+            result = com.create_chart(file_path, sheet_name, chart_type, data_range, title)
+            return {
+                "status": EXECUTOR_RESULT_OK,
+                "message": result["message"],
+                "output": result,
+                "audit_required": True,
+                "snapshot_created": True,
+            }
+    except TimeoutError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"timeout": True}}
+    except PermissionError as e:
+        return {"status": EXECUTOR_RESULT_BLOCKED, "message": str(e), "output": {"blocked": True}}
+    except Exception as e:
+        logger.exception("Excel COM create chart failed")
+        return {"status": EXECUTOR_RESULT_FAILED, "message": f"COM error: {e}", "output": {}}
+
+
+# ── Phase 45B: Live Excel Editing Executor (Active Workbook COM) ───────────────
+
+
+def _execute_excel_live_edit_active_workbook(params: dict, db: Session, user) -> dict:
+    command_type = params.get("command_type", "")
+    cmd_params = params.get("params", {})
+    if not command_type:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": "command_type is required", "output": {}}
+    try:
+        adapter = ExcelComAdapter(visible=False, timeout=COM_TIMEOUT_SECONDS)
+        with adapter as com:
+            if not com.available:
+                return {
+                    "status": EXECUTOR_RESULT_FAILED,
+                    "message": "Excel COM is not available on this machine. xlwings or Excel is not installed.",
+                    "output": {"fallback": True},
+                }
+            connect_result = com.connect_to_active_workbook()
+            wb_name = connect_result.get("workbook_name", "unknown")
+            result = com.execute_live_command(command_type, cmd_params)
+            return {
+                "status": EXECUTOR_RESULT_OK,
+                "message": f"Live edit '{command_type}' on '{wb_name}': {result.get('message', 'ok')}",
+                "output": {
+                    "workbook_name": wb_name,
+                    "command_type": command_type,
+                    "live_result": result,
+                    "snapshot_path": connect_result.get("snapshot_path"),
+                    "undo_available": True,
+                },
+                "audit_required": True,
+                "snapshot_created": True,
+            }
+    except RuntimeError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"no_active_excel": True}}
+    except TimeoutError as e:
+        return {"status": EXECUTOR_RESULT_FAILED, "message": str(e), "output": {"timeout": True}}
+    except PermissionError as e:
+        return {"status": EXECUTOR_RESULT_BLOCKED, "message": str(e), "output": {"blocked": True}}
+    except Exception as e:
+        logger.exception("Live Excel edit failed")
+        return {"status": EXECUTOR_RESULT_FAILED, "message": f"Live edit error: {e}", "output": {}}
 
 
 # ── Email Automation Executors (Phase 34 — Gmail Read-Only) ────────────────────
@@ -2527,6 +3005,175 @@ def _execute_workflow_restore_version(params: dict, db: Session, user) -> dict:
         "output": {"skill_name": skill_name, "version": version, "restored": True},
         "audit_required": True,
     }
+
+
+# ── Phase 39: Google Drive Executors ─────────────────────────────────────────
+
+
+def _get_user_id_from_user(user) -> int:
+    if hasattr(user, "id"):
+        return user.id
+    return int(getattr(user, "sub", 0) or 0)
+
+
+def _execute_drive_list_recent_files(params: dict, db: Session, user) -> dict:
+    from .google_drive_adapter import get_adapter
+    days_back = int(params.get("days_back", 7))
+    keywords = params.get("keywords")
+    adapter = get_adapter(user_id=_get_user_id_from_user(user))
+    files = adapter.list_recent_files(days_back=days_back, keywords=keywords)
+    return {
+        "status": EXECUTOR_RESULT_OK,
+        "message": f"Found {len(files)} file(s) in Google Drive (last {days_back} days)",
+        "output": {
+            "files": files,
+            "file_count": len(files),
+            "days_back": days_back,
+            "keywords": keywords or [],
+            "mode": "mock" if not adapter._real_mode else "real",
+        },
+        "audit_required": False,
+    }
+
+
+def _execute_drive_download_file(params: dict, db: Session, user) -> dict:
+    from .google_drive_adapter import get_adapter
+    file_id = params.get("file_id", "")
+    target_folder = params.get("target_folder")
+    if not file_id:
+        return {
+            "status": EXECUTOR_RESULT_FAILED,
+            "message": "file_id is required for download",
+            "output": {},
+            "audit_required": False,
+            "error_message": "Missing required parameter: file_id",
+        }
+    adapter = get_adapter(user_id=_get_user_id_from_user(user))
+    result = adapter.download_file(file_id, target_folder=target_folder)
+    return {
+        "status": EXECUTOR_RESULT_OK,
+        "message": f"Downloaded: {result['name']} -> {result['local_path']}",
+        "output": {
+            "file_id": result["file_id"],
+            "name": result["name"],
+            "mime_type": result["mime_type"],
+            "size": result["size"],
+            "local_path": result["local_path"],
+            "mode": result.get("mode", "mock"),
+        },
+        "audit_required": False,
+        "snapshot_created": False,
+    }
+
+
+# ── Phase 39: Analytics Executors ─────────────────────────────────────────────
+
+
+def _execute_analyze_invoice_dataset(params: dict, db: Session, user) -> dict:
+    invoices_data = params.get("invoices_data", params.get("invoices", []))
+    if not invoices_data:
+        return {
+            "status": EXECUTOR_RESULT_FAILED,
+            "message": "No invoice data provided",
+            "output": {},
+            "audit_required": False,
+            "error_message": "invoices_data is required",
+        }
+
+    amounts = []
+    for inv in invoices_data:
+        try:
+            amounts.append(float(inv.get("total_amount", inv.get("amount", 0))))
+        except (ValueError, TypeError):
+            amounts.append(0.0)
+
+    if not amounts:
+        return {
+            "status": EXECUTOR_RESULT_OK,
+            "message": "No valid invoice amounts found",
+            "output": {
+                "total_sum": 0,
+                "invoice_count": 0,
+                "largest_amount": 0,
+                "largest_vendor": "",
+                "smallest_amount": 0,
+                "smallest_vendor": "",
+                "average_amount": 0,
+            },
+            "audit_required": False,
+        }
+
+    total_sum = sum(amounts)
+    invoice_count = len(amounts)
+    largest_amount = max(amounts)
+    smallest_amount = min(amounts)
+    average_amount = round(total_sum / invoice_count, 2)
+
+    largest_idx = amounts.index(largest_amount)
+    smallest_idx = amounts.index(smallest_amount)
+    largest_vendor = invoices_data[largest_idx].get("vendor", invoices_data[largest_idx].get("vendor_name", ""))
+    smallest_vendor = invoices_data[smallest_idx].get("vendor", invoices_data[smallest_idx].get("vendor_name", ""))
+
+    return {
+        "status": EXECUTOR_RESULT_OK,
+        "message": f"Analyzed {invoice_count} invoices: total={total_sum:.2f}, avg={average_amount:.2f}",
+        "output": {
+            "total_sum": total_sum,
+            "invoice_count": invoice_count,
+            "largest_amount": largest_amount,
+            "largest_vendor": largest_vendor,
+            "smallest_amount": smallest_amount,
+            "smallest_vendor": smallest_vendor,
+            "average_amount": average_amount,
+        },
+        "audit_required": False,
+    }
+
+
+# ── Phase 41: Semantic Memory Executor ────────────────────────────────────────
+
+
+def _execute_semantic_search_invoices(params: dict, db: Session, user) -> dict:
+    query = params.get("query", "")
+    top_k = int(params.get("top_k", 5))
+    if not query or not query.strip():
+        return {
+            "status": EXECUTOR_RESULT_FAILED,
+            "message": "No search query provided",
+            "output": {"results": []},
+            "audit_required": True,
+            "error_message": "query parameter is required",
+        }
+    try:
+        from .semantic_memory import get_semantic_memory
+        sm = get_semantic_memory()
+        results = sm.semantic_search(query, top_k=top_k)
+        invoices = []
+        for r in results:
+            meta = r.get("metadata", {})
+            invoices.append({
+                "vendor": meta.get("vendor", ""),
+                "amount": meta.get("amount", 0),
+                "date": meta.get("date", ""),
+                "file_path": meta.get("file_path", ""),
+                "invoice_no": meta.get("invoice_no", ""),
+                "currency": meta.get("currency", ""),
+                "score": r.get("score", 0),
+            })
+        return {
+            "status": EXECUTOR_RESULT_OK,
+            "message": f"Found {len(invoices)} matching invoices",
+            "output": {"results": invoices, "query": query, "total_found": len(invoices)},
+            "audit_required": True,
+        }
+    except Exception as e:
+        return {
+            "status": EXECUTOR_RESULT_FAILED,
+            "message": f"Semantic search failed: {e}",
+            "output": {"results": []},
+            "audit_required": True,
+            "error_message": str(e),
+        }
 
 
 # ── Google Sheets Placeholder Executor ────────────────────────────────────────

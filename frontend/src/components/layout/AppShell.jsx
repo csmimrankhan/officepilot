@@ -7,6 +7,7 @@ import FeedbackModal from '../FeedbackModal.jsx'
 import BugReportModal from '../BugReportModal.jsx'
 import TrayFloatingAgent from '../agent/TrayFloatingAgent.jsx'
 import VoiceOverlay from '../voice/VoiceOverlay.jsx'
+import ReleaseNotesModal from '../ReleaseNotesModal.jsx'
 
 
 export default function AppShell({ children }) {
@@ -89,6 +90,7 @@ export default function AppShell({ children }) {
       </div>
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
       {showBugReport && <BugReportModal onClose={() => setShowBugReport(false)} />}
+      <ReleaseNotesModal />
       <TrayFloatingAgent />
       {voiceMode && (
         <VoiceOverlay

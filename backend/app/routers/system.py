@@ -14,6 +14,14 @@ from ..services.cleanup import build_cleanup_preview, get_storage_usage, run_cle
 from ..services.readiness import build_readiness_report
 from ..services.release_checklist import get_checklist
 from ..services.startup_metrics import get_metrics
+from ..services.system_resources import (
+    clear_vector_memory,
+    get_orphaned_excel_processes,
+    get_python_memory_mb,
+    get_vector_store_size_mb,
+    kill_orphaned_excel,
+)
+from pathlib import Path
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 
@@ -142,8 +150,73 @@ def complete_release_step(body: CompleteStepRequest):
     raise HTTPException(status_code=500, detail="Step not found after completion")
 
 
+@router.get("/downloads-path")
+def get_downloads_path():
+    home = Path.home()
+    candidates = [
+        home / "Downloads",
+        home / "downloads",
+        home / "Desktop" / "Downloads",
+    ]
+    for c in candidates:
+        if c.is_dir():
+            return {"path": str(c.resolve())}
+    return {"path": str((home / "Downloads").resolve())}
+
+
 @router.post("/release/checklist/reset")
 def reset_release_checklist():
     checklist = get_checklist()
     checklist.reset()
     return {"status": "ok"}
+
+
+# ── Resource Monitor (Phase 46B) ────────────────────────────────────────────
+
+
+class ResourceMonitorResponse(BaseModel):
+    python_memory_mb: float
+    vector_store_mb: float
+    orphaned_excel_count: int
+    orphaned_excel_pids: list[int]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OptimizeResponse(BaseModel):
+    status: str
+    detail: str = ""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get("/resources", response_model=ResourceMonitorResponse)
+def get_resources(
+    current_user: User = Depends(get_current_user),
+):
+    count, pids = get_orphaned_excel_processes()
+    return ResourceMonitorResponse(
+        python_memory_mb=get_python_memory_mb(),
+        vector_store_mb=get_vector_store_size_mb(),
+        orphaned_excel_count=count,
+        orphaned_excel_pids=pids,
+    )
+
+
+@router.post("/optimize/clear-memory", response_model=OptimizeResponse)
+def optimize_clear_memory(
+    current_user: User = Depends(get_current_user),
+):
+    result = clear_vector_memory()
+    return OptimizeResponse(status=result["status"], detail=result["detail"])
+
+
+@router.post("/optimize/kill-excel", response_model=OptimizeResponse)
+def optimize_kill_excel(
+    current_user: User = Depends(get_current_user),
+):
+    killed = kill_orphaned_excel()
+    return OptimizeResponse(
+        status="ok",
+        detail=f"Terminated {killed} orphaned Excel process(es)",
+    )
